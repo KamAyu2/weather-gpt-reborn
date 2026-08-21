@@ -5,19 +5,23 @@
 
 /* ─── Mobile Scroll & Touch Fixes ──────────────────────────────────────── */
 
-/* Prevent overscroll bounce on iOS/Android */
-html, body {
-  overscroll-behavior: none;
-  -webkit-overflow-scrolling: touch;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  height: 100%;
-  overflow: hidden;
+/* Prevent overscroll bounce on mobile only */
+@media (max-width: 639px) {
+  html, body {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #root {
+    height: 100%;
+  }
 }
 
-#root {
-  height: 100%;
-  overflow: hidden;
+/* Desktop: normal scrolling */
+html {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
 }
 
 /* Safe area insets for notched phones */
