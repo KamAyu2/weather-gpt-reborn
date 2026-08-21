@@ -257,6 +257,117 @@ function generateHelpResponse(): string {
   return `Here's what I can help you with:\n\n**Current Weather**\n• "What's the weather in Mumbai?"\n• "Temperature in Delhi right now"\n• "Is it raining in London?"\n\n**Forecasts**\n• "7-day forecast for Tokyo"\n• "Will it rain tomorrow in Paris?"\n• "Weather this week in Sydney"\n\n**General**\n• Ask about any city worldwide\n• Get temperature, humidity, wind, UV, and precipitation data\n• Receive severe weather alerts when conditions are extreme\n\nJust type your weather question and I'll provide the latest data.`;
 }
 
+// ─── LLM Integration ──────────────────────────────────────────────────────
+
+async function callLLM(userMessage: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return getFallbackResponse(userMessage);
+  }
+
+  const systemPrompt = `You are Weather Chat, an intelligent AI assistant built for weather intelligence and general conversation.
+
+Your capabilities:
+- Provide real-time weather conditions for any location worldwide
+- Deliver 7-day forecasts with detailed breakdowns
+- Issue severe weather alerts and warnings
+- Answer questions about climate, meteorology, and geography
+- Have friendly, helpful conversations on any topic
+- Answer general knowledge questions
+- Help with math, science, history, and other educational topics
+
+When users ask about weather:
+- Provide accurate, helpful information
+- Include relevant details like temperature, humidity, wind, UV index
+- Suggest relevant follow-up questions
+
+When users ask general questions:
+- Be helpful, friendly, and informative
+- Keep responses concise but thorough
+- Maintain a warm, professional tone
+- Use markdown formatting for clarity
+
+Always respond in a helpful, conversational tone.`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: userMessage }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      return getFallbackResponse(userMessage);
+    }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || getFallbackResponse(userMessage);
+  } catch (error) {
+    return getFallbackResponse(userMessage);
+  }
+}
+
+function getFallbackResponse(userMessage: string): string {
+  const msg = userMessage.toLowerCase().trim();
+  
+  // Greetings
+  if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy|greetings)/i.test(msg)) {
+    return "Hello! 👋 I'm Weather Chat, your intelligent weather assistant. I can help you with:\n\n• **Weather conditions** for any location\n• **7-day forecasts** with detailed breakdowns\n• **Severe weather alerts** and warnings\n• **Climate information** and trends\n\nJust ask about the weather in any city, or try one of the suggestion chips below!";
+  }
+  
+  // How are you
+  if (/how\s*(are\s*you|r\s*u)/i.test(msg)) {
+    return "I'm doing great, thanks for asking! ☀️ I'm always ready to help you with weather information. What would you like to know?";
+  }
+  
+  // Thank you
+  if (/thank|thanks|thx/i.test(msg)) {
+    return "You're welcome! 😊 Is there anything else you'd like to know about the weather?";
+  }
+  
+  // Goodbye
+  if (/bye|goodbye|see\s*ya|later|cya/i.test(msg)) {
+    return "Goodbye! 👋 Stay weather-aware, and feel free to come back anytime you need weather information!";
+  }
+  
+  // Jokes
+  if (/joke|funny|laugh/i.test(msg)) {
+    const jokes = [
+      "Why don't weather forecasters win awards? Because they always say it's partly cloudy! ⛅",
+      "What do you call a cold dog sitting on a rabbit? A chili dog on a bunny! 🐕",
+      "Why did the weather vane win the race? Because it was always pointing in the right direction! 🌬️",
+      "What's a meteorologist's favorite type of story? A thunder-thriller! ⛈️",
+      "Why was the weather report so expensive? Because it cost a pretty penny for the forecast! 💰",
+    ];
+    return jokes[Math.floor(Math.random() * jokes.length)];
+  }
+  
+  // Time/date
+  if (/what\s*(time|date|day)/i.test(msg)) {
+    const now = new Date();
+    return `It's currently ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} on ${now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}. Would you like to know the weather for this time?`;
+  }
+  
+  // Weather-related but no location
+  if (/weather|rain|snow|temperature|forecast|wind|sun|cloud|storm/i.test(msg)) {
+    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for Tokyo\"\n• \"Is it raining in London?\"";
+  }
+  
+  // Help/capabilities
+  if (/help|what\s*can\s*you|capabilities|features/i.test(msg)) {
+    return generateHelpResponse();
+  }
+  
+  // Default
+  return "I'm Weather Chat, focused on providing weather intelligence! While I specialize in weather data, forecasts, and alerts, I'm always happy to chat. 🌤️\n\nTry asking me about:\n• Weather in any city\n• 7-day forecasts\n• UV index and conditions\n• Weather alerts\n\nWhat would you like to know?";
+}
+
 // ─── Chat mutation ──────────────────────────────────────────────────────────
 
 export const sendMessage = mutation({
@@ -406,8 +517,8 @@ export const processMessage = action({
     const parsed = parseQuery(content);
 
     if (!parsed.location) {
-      // If no location detected, provide help
-      const text = generateHelpResponse();
+      // Call LLM for non-weather queries
+      const text = await callLLM(content);
       await ctx.runMutation(api.chat.saveAssistantMessage, {
         conversationId: args.conversationId,
         content: text,

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon } from "lucide-react";
+import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -25,9 +25,9 @@ const FEATURES = [
     description: "Automatic warnings when conditions become extreme — heat advisories, storms, high UV, and dangerous winds.",
   },
   {
-    icon: Star,
-    title: "Saved Insights",
-    description: "Star important weather responses to keep them in your personal dashboard for quick reference and planning.",
+    icon: MessageCircle,
+    title: "AI-Powered Chat",
+    description: "Ask anything — weather questions, general knowledge, or just chat. Our AI assistant handles all conversations naturally.",
   },
   {
     icon: Globe,

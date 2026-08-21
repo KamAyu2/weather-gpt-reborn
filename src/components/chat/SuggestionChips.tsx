@@ -1,14 +1,14 @@
-import { CloudRain, MapPin, Thermometer, Wind, Sun, Snowflake, Compass, TrendingUp } from "lucide-react";
+import { CloudRain, MapPin, Thermometer, Wind, MessageCircle, HelpCircle, Snowflake, Sun } from "lucide-react";
 
 const SUGGESTIONS = [
   { text: "What's the weather in Mumbai?", icon: Thermometer },
   { text: "7-day forecast for Delhi", icon: CloudRain },
   { text: "Is it raining in London?", icon: MapPin },
   { text: "Wind conditions in Tokyo", icon: Wind },
-  { text: "UV index in Sydney today", icon: Sun },
+  { text: "Tell me a joke", icon: MessageCircle },
+  { text: "What's the capital of France?", icon: HelpCircle },
   { text: "Snow forecast for Moscow", icon: Snowflake },
-  { text: "Weather in New York this week", icon: Compass },
-  { text: "Temperature in Dubai right now", icon: TrendingUp },
+  { text: "UV index in Sydney today", icon: Sun },
 ];
 
 interface SuggestionChipsProps {
