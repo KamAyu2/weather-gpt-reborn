@@ -221,7 +221,7 @@ export function AnimatedHero() {
             onClick={() => window.location.href = "/auth?returnTo=/dashboard"}
             className="inline-flex h-11 sm:h-12 items-center gap-2 sm:gap-2.5 rounded-full gradient-primary px-5 sm:px-6 text-sm font-medium text-white transition-all shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
           >
-            Start using Weather Chat
+            Start using Weather GPT
             <ArrowRight className="h-4 w-4" />
           </motion.button>
           <span className="text-xs text-muted-foreground">No credit card required</span>

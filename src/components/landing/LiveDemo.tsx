@@ -84,7 +84,7 @@ export function LiveDemo() {
               See it in action
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Watch how Weather Chat responds to real questions about weather, agriculture, and disaster alerts.
+              Watch how Weather GPT responds to real questions about weather, agriculture, and disaster alerts.
             </p>
           </motion.div>
         </div>
@@ -105,7 +105,7 @@ export function LiveDemo() {
                   <Cloud className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium">Weather Chat</p>
+                  <p className="text-xs font-medium">Weather GPT</p>
                   <p className="text-[10px] text-emerald-500 flex items-center gap-1">
                     <span className="h-1 w-1 rounded-full bg-emerald-500" />
                     Online

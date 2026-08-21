@@ -382,7 +382,7 @@ async function callLLM(userMessage: string): Promise<string> {
     return getFallbackResponse(userMessage);
   }
 
-  const systemPrompt = `You are Weather Chat, an intelligent AI assistant built for weather intelligence and general conversation.
+  const systemPrompt = `You are Weather GPT, an intelligent AI assistant built for weather intelligence and general conversation.
 
 Your capabilities:
 - Provide real-time weather conditions for any location worldwide
@@ -435,7 +435,7 @@ function getFallbackResponse(userMessage: string): string {
   
   // Greetings
   if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy|greetings)/i.test(msg)) {
-    return "Hello! 👋 I'm Weather Chat, your intelligent weather assistant. I can help you with:\n\n• **Weather conditions** for any location\n• **7-day forecasts** with detailed breakdowns\n• **Severe weather alerts** and warnings\n• **Climate information** and trends\n\nJust ask about the weather in any city, or try one of the suggestion chips below!";
+    return "Hello! 👋 I'm Weather GPT, your intelligent weather assistant. I can help you with:\n\n• **Weather conditions** for any location\n• **7-day forecasts** with detailed breakdowns\n• **Severe weather alerts** and warnings\n• **Climate information** and trends\n\nJust ask about the weather in any city, or try one of the suggestion chips below!";
   }
   
   // How are you
@@ -482,7 +482,7 @@ function getFallbackResponse(userMessage: string): string {
   }
   
   // Default
-  return "I'm Weather Chat, focused on providing weather intelligence! While I specialize in weather data, forecasts, and alerts, I'm always happy to chat. 🌤️\n\nTry asking me about:\n• Weather in any city\n• 7-day forecasts\n• UV index and conditions\n• Weather alerts\n\nWhat would you like to know?";
+  return "I'm Weather GPT, focused on providing weather intelligence! While I specialize in weather data, forecasts, and alerts, I'm always happy to chat. 🌤️\n\nTry asking me about:\n• Weather in any city\n• 7-day forecasts\n• UV index and conditions\n• Weather alerts\n\nWhat would you like to know?";
 }
 
 // ─── Chat mutation ──────────────────────────────────────────────────────────

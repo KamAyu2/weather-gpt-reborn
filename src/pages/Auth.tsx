@@ -109,7 +109,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <Cloud className="h-4 w-4" />
-          <span className="font-medium">Weather Chat</span>
+          <span className="font-medium">Weather GPT</span>
         </button>
       </div>
 
@@ -127,7 +127,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   </div>
                   <CardTitle className="text-xl">Get Started</CardTitle>
                   <CardDescription>
-                    Enter your email to sign in to Weather Chat
+                    Enter your email to sign in to Weather GPT
                   </CardDescription>
                 </CardHeader>
                 <form onSubmit={handleEmailSubmit}>

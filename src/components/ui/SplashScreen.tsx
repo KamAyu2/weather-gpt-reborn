@@ -146,7 +146,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
           transition={{ duration: 0.6, delay: 0.3 }}
           className="text-3xl font-semibold tracking-tight text-white mb-2"
         >
-          Weather Chat
+          Weather GPT
         </motion.h1>
 
         <motion.p

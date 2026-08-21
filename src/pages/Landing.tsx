@@ -95,7 +95,7 @@ export default function Landing() {
             <div className="flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg gradient-primary">
               <Cloud className="h-3.5 sm:h-4 w-3.5 sm:w-4 text-white" />
             </div>
-            <span className="text-xs sm:text-sm font-semibold tracking-tight">Weather Chat</span>
+            <span className="text-xs sm:text-sm font-semibold tracking-tight">Weather GPT</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <button
@@ -178,7 +178,7 @@ export default function Landing() {
               onClick={handleGetStarted}
               className="inline-flex h-11 sm:h-12 items-center gap-2 sm:gap-2.5 rounded-full gradient-primary px-5 sm:px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
             >
-              Open Weather Chat
+              Open Weather GPT
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -192,7 +192,7 @@ export default function Landing() {
             <div className="flex h-6 w-6 items-center justify-center rounded-md gradient-primary">
               <Cloud className="h-3 w-3 text-white" />
             </div>
-            <span className="text-xs font-medium">Weather Chat</span>
+            <span className="text-xs font-medium">Weather GPT</span>
           </div>
           <span className="text-[10px] sm:text-xs text-muted-foreground">
             Weather data by Open-Meteo

@@ -166,7 +166,7 @@ export default function Dashboard() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-md gradient-primary shadow-sm">
                   <Cloud className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-xs font-semibold tracking-tight">Weather Chat</span>
+                <span className="text-xs font-semibold tracking-tight">Weather GPT</span>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -344,7 +344,7 @@ export default function Dashboard() {
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground">
                   <Cloud className="h-3 w-3 text-background" />
                 </div>
-                <span className="text-xs font-semibold tracking-tight">Weather Chat</span>
+                <span className="text-xs font-semibold tracking-tight">Weather GPT</span>
               </div>
             )}
             {sidebarOpen && view === "chat" && (
