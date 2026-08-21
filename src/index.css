@@ -2,6 +2,63 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "leaflet/dist/leaflet.css";
+
+/* ─── Mobile Scroll & Touch Fixes ──────────────────────────────────────── */
+
+/* Prevent overscroll bounce on iOS/Android */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Safe area insets for notched phones */
+@supports (padding: env(safe-area-inset-top)) {
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Mobile-only utilities */
+@media (max-width: 639px) {
+  /* Prevent pull-to-refresh */
+  body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* Make scrollable areas use momentum scrolling */
+  .overflow-y-auto,
+  .overflow-y-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Fix map touch interference */
+  .leaflet-container {
+    touch-action: pan-x pan-y;
+  }
+
+  /* Mobile input fix - prevent zoom on focus */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Fix horizontal overflow */
+  * {
+    max-width: 100vw;
+  }
+}
 @custom-variant dark (&:is(.dark *));
 
 /* DO NOT CHANGE */

@@ -39,15 +39,19 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-border/50 bg-gradient-to-t from-background to-background/80 backdrop-blur-xl">
-      <div className="mx-auto max-w-3xl px-4 py-4">
-        <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-white/80 shadow-sm px-4 py-3 transition-colors focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/10">
+    <div className="border-t border-border/50 bg-gradient-to-t from-background to-background/80 backdrop-blur-xl sm:pb-0 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:mb-0 mb-12">
+      <div className="mx-auto max-w-3xl px-3 sm:px-4 py-3 sm:py-4">
+        <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-white/80 shadow-sm px-3 sm:px-4 py-2.5 sm:py-3 transition-colors focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/10">
           {voiceInput}
           <textarea
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={() => {
+              // Scroll input into view on mobile when keyboard opens
+              setTimeout(() => textareaRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 300);
+            }}
             placeholder={placeholder}
             disabled={disabled || isLoading}
             rows={1}

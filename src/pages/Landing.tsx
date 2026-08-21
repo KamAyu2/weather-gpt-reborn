@@ -89,25 +89,25 @@ export default function Landing() {
       className="min-h-screen flex flex-col"
     >
       {/* ─── Navigation ─────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-              <Cloud className="h-4 w-4 text-white" />
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl safe-area-top">
+        <div className="mx-auto flex h-14 sm:h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg gradient-primary">
+              <Cloud className="h-3.5 sm:h-4 w-3.5 sm:w-4 text-white" />
             </div>
-            <span className="text-sm font-semibold tracking-tight">Weather Chat</span>
+            <span className="text-xs sm:text-sm font-semibold tracking-tight">Weather Chat</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={toggleTheme}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+              className="flex h-8 sm:h-9 w-8 sm:w-9 items-center justify-center rounded-full border border-border/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
               title="Toggle theme"
             >
               {currentTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-9 items-center gap-2 rounded-full gradient-primary px-4 text-xs font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/25"
+              className="inline-flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-full gradient-primary px-3 sm:px-4 text-[11px] sm:text-xs font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/25"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
@@ -123,19 +123,19 @@ export default function Landing() {
       <AnimatedStats />
 
       {/* ─── Features ────────────────────────────────────────────────────── */}
-      <section className="py-24">
-        <div className="mx-auto max-w-6xl px-6">
+      <section className="py-16 sm:py-24">
+        <div className="mx-auto max-w-6xl px-5 sm:px-6">
           <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight sm:text-3xl">
               Built for teams that need answers
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
               From daily operations to long-range planning — get precise weather
               data when and where you need it.
             </p>
           </div>
 
-          <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 sm:mt-16 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature, i) => (
               <motion.div
                 key={feature.title}
@@ -143,7 +143,7 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="rounded-2xl border border-border/50 bg-white/80 backdrop-blur-sm p-6 card-hover shadow-sm"
+                className="rounded-2xl border border-border/50 bg-white/80 backdrop-blur-sm p-5 sm:p-6 card-hover shadow-sm"
               >
                 <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color}`}>
                   <feature.icon className="h-6 w-6 text-white" />
@@ -165,18 +165,18 @@ export default function Landing() {
       <TechStack />
 
       {/* ─── CTA ─────────────────────────────────────────────────────────── */}
-      <section className="border-t border-border/50 py-24 bg-gradient-to-br from-primary/5 via-background to-primary/10">
-        <div className="mx-auto max-w-2xl px-6 text-center">
-          <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+      <section className="border-t border-border/50 py-16 sm:py-24 bg-gradient-to-br from-primary/5 via-background to-primary/10">
+        <div className="mx-auto max-w-2xl px-5 sm:px-6 text-center">
+          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight sm:text-3xl">
             Ready to get started?
           </h2>
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
             Ask about any location and receive instant, accurate weather data.
           </p>
-          <div className="mt-8">
+          <div className="mt-6 sm:mt-8">
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-12 items-center gap-2.5 rounded-full gradient-primary px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30"
+              className="inline-flex h-11 sm:h-12 items-center gap-2 sm:gap-2.5 rounded-full gradient-primary px-5 sm:px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
             >
               Open Weather Chat
               <ArrowRight className="h-4 w-4" />
@@ -186,15 +186,15 @@ export default function Landing() {
       </section>
 
       {/* ─── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border/50 py-8 bg-muted/30">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
+      <footer className="border-t border-border/50 py-6 sm:py-8 bg-muted/30 safe-area-bottom">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 sm:px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-md gradient-primary">
               <Cloud className="h-3 w-3 text-white" />
             </div>
             <span className="text-xs font-medium">Weather Chat</span>
           </div>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-[10px] sm:text-xs text-muted-foreground">
             Weather data by Open-Meteo
           </span>
         </div>

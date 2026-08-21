@@ -24,9 +24,10 @@ import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { VoiceInput } from "@/components/chat/VoiceInput";
 import { DashboardHome } from "@/components/dashboard/DashboardHome";
 import { WeatherComparison } from "@/components/weather/WeatherComparison";
+import { MobileNav } from "@/components/ui/MobileNav";
 import { Id } from "@/convex/_generated/dataModel";
 import { useLanguage, LANGUAGES, type Language } from "@/lib/i18n";
-import { Globe, GitCompare } from "lucide-react";
+import { Globe, GitCompare, Menu } from "lucide-react";
 
 type View = "home" | "chat" | "starred" | "compare";
 
@@ -38,6 +39,18 @@ export default function Dashboard() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (mobile) setSidebarOpen(false);
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
   const { language, setLanguage, translate } = useLanguage();
 
@@ -137,7 +150,7 @@ export default function Dashboard() {
   const showWelcome = view === "chat" && !activeConversation && (!messages || messages.length === 0);
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* ─── Sidebar ──────────────────────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {sidebarOpen && (
@@ -145,8 +158,7 @@ export default function Dashboard() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 260, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex h-full flex-col border-r border-border/50 bg-muted/20 overflow-hidden"
+            transition={{ duration: 0.2 }} className={`flex h-full flex-col border-r border-border/50 bg-muted/20 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl" : ""}`}
           >
             {/* Logo */}
             <div className="flex h-14 items-center justify-between border-b border-border/50 px-4">
@@ -302,7 +314,15 @@ export default function Dashboard() {
         {/* Header */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">
           <div className="flex items-center gap-2">
-            {!sidebarOpen && (
+            {isMobile && !sidebarOpen && (
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <Menu className="h-4 w-4" />
+              </button>
+            )}
+            {!sidebarOpen && !isMobile && (
               <button
                 onClick={toggleTheme}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted transition-colors"
@@ -525,6 +545,19 @@ export default function Dashboard() {
             )}
           </AnimatePresence>
         </div>
+
+        {/* Mobile Bottom Nav */}
+        {isMobile && (
+          <MobileNav
+            currentView={view}
+            onViewChange={(v) => {
+              setView(v);
+              if (v === "chat") handleNewConversation();
+            }}
+            onNewChat={handleNewConversation}
+            starredCount={starredMessages?.length ?? 0}
+          />
+        )}
 
         {/* Input — only show in chat view */}
         {view === "chat" && (
