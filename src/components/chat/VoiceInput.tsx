@@ -1,35 +1,53 @@
 import { useState, useEffect, useCallback } from "react";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff } from "lucide-react";
 
 interface VoiceInputProps {
-  onTranscript: (text: string) => void;
+  onResult: (text: string) => void;
   disabled?: boolean;
   language?: string;
 }
 
-export function VoiceInput({ onTranscript, disabled = false, language = "en-US" }: VoiceInputProps) {
+// Minimal Web Speech API type declarations
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onresult: (event: { results: { length: number; 0: { length: number; 0: { transcript: string; isFinal: boolean } } } }) => void;
+  onerror: (event: { error: string }) => void;
+  onend: () => void;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition: new () => SpeechRecognitionInstance;
+  }
+}
+
+export function VoiceInput({ onResult, disabled = false, language = "en-US" }: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
+  const [recognition, setRecognition] = useState<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
-    // Check if Web Speech API is supported
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognitionAPI) {
       setIsSupported(true);
-      const recognitionInstance = new SpeechRecognition();
+      const recognitionInstance = new SpeechRecognitionAPI();
       recognitionInstance.continuous = false;
       recognitionInstance.interimResults = false;
       recognitionInstance.lang = language;
 
       recognitionInstance.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
-        onTranscript(transcript);
+        onResult(transcript);
         setIsListening(false);
       };
 
-      recognitionInstance.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
+      recognitionInstance.onerror = () => {
         setIsListening(false);
       };
 
@@ -39,7 +57,7 @@ export function VoiceInput({ onTranscript, disabled = false, language = "en-US" 
 
       setRecognition(recognitionInstance);
     }
-  }, [language, onTranscript]);
+  }, [language, onResult]);
 
   const toggleListening = useCallback(() => {
     if (!recognition) return;
@@ -75,50 +93,4 @@ export function VoiceInput({ onTranscript, disabled = false, language = "en-US" 
       )}
     </button>
   );
-}
-
-// Add TypeScript declarations for Web Speech API
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  abort(): void;
-  onresult: (event: SpeechRecognitionEvent) => void;
-  onerror: (event: SpeechRecognitionErrorEvent) => void;
-  onend: () => void;
-}
-
-interface SpeechRecognitionEvent {
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionErrorEvent {
-  error: string;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-  isFinal: boolean;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
 }

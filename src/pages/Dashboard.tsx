@@ -463,7 +463,7 @@ export default function Dashboard() {
             onChange={setInput}
             onSubmit={() => handleSend()}
             isLoading={isLoading}
-            voiceInput={<VoiceInput onResult={(text) => { setInput(text); setTimeout(() => handleSend(text), 50); }} />}
+            voiceInput={<VoiceInput onResult={(transcript: string) => { setInput(transcript); setTimeout(() => handleSend(transcript), 50); }} />}
           />
         )}
       </div>
