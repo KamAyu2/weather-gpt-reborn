@@ -1,7 +1,7 @@
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
-import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw } from "lucide-react";
+import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw, Sprout, AlertTriangle, Globe } from "lucide-react";
 import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
@@ -99,7 +99,65 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           </div>
 
           {weatherData ? (
-            <WeatherCardCompact weatherData={weatherData} />
+            <div className="space-y-3">
+              <WeatherCardCompact weatherData={weatherData} />
+              
+              {/* Agriculture Advisory */}
+              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sprout className="h-4 w-4 text-green-600" />
+                  <span className="text-xs font-medium">Agriculture Advisory</span>
+                </div>
+                <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                  {weatherData.current.temperature >= 35 && (
+                    <p>• Heat stress risk for crops — ensure adequate irrigation</p>
+                  )}
+                  {weatherData.current.temperature <= 10 && (
+                    <p>• Frost risk for sensitive crops — consider protective measures</p>
+                  )}
+                  {weatherData.daily[0]?.precipitationProbabilityMax > 50 && (
+                    <p>• Delay pesticide/fertilizer application — rain expected</p>
+                  )}
+                  {weatherData.current.humidity > 80 && (
+                    <p>• High humidity — watch for fungal diseases in crops</p>
+                  )}
+                  {weatherData.current.windSpeed > 25 && (
+                    <p>• Strong winds — avoid spraying operations</p>
+                  )}
+                  {weatherData.current.temperature >= 15 && weatherData.current.temperature <= 35 && (
+                    <p>• Good conditions for agricultural activities</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Disaster Alert Status */}
+              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-amber-50/80 to-orange-50/80 dark:from-amber-950/30 dark:to-orange-950/30 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-medium">Disaster Alert Status</span>
+                </div>
+                <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                  {weatherData.current.temperature >= 42 && (
+                    <p>• ⛔ Extreme heatwave — avoid outdoor activities</p>
+                  )}
+                  {weatherData.current.temperature >= 38 && weatherData.current.temperature < 42 && (
+                    <p>• ⚠️ Heatwave advisory — take precautions</p>
+                  )}
+                  {weatherData.current.temperature <= 2 && (
+                    <p>• ⛔ Severe cold wave — risk of hypothermia</p>
+                  )}
+                  {weatherData.current.weatherCode >= 95 && (
+                    <p>• ⛔ Thunderstorm active — seek shelter</p>
+                  )}
+                  {weatherData.current.windSpeed >= 60 && (
+                    <p>• ⛔ Severe winds — stay indoors</p>
+                  )}
+                  {weatherData.current.temperature >= 10 && weatherData.current.temperature <= 38 && weatherData.current.weatherCode < 95 && weatherData.current.windSpeed < 60 && (
+                    <p>• ✅ All clear — no severe weather alerts</p>
+                  )}
+                </div>
+              </div>
+            </div>
           ) : (
             <button
               onClick={() => loadWeather("Mumbai")}

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon, MessageCircle, Zap, Shield } from "lucide-react";
+import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon, MessageCircle, Zap, Shield, Sprout, AlertTriangle, Mic, Languages } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -19,25 +19,39 @@ const FEATURES = [
     iconColor: "text-indigo-500",
   },
   {
-    icon: MapPin,
-    title: "Location Search",
-    description: "Ask about any city or region worldwide. Type naturally and get precise results for the location you need.",
-    color: "from-emerald-400 to-teal-500",
-    iconColor: "text-emerald-500",
+    icon: Sprout,
+    title: "Agriculture Advisory",
+    description: "Crop-specific weather advice for farmers — irrigation timing, sowing conditions, pest alerts, and harvest windows.",
+    color: "from-green-400 to-emerald-500",
+    iconColor: "text-green-500",
   },
   {
-    icon: Wind,
-    title: "Weather Alerts",
-    description: "Automatic warnings when conditions become extreme — heat advisories, storms, high UV, and dangerous winds.",
+    icon: AlertTriangle,
+    title: "Disaster Alerts",
+    description: "Real-time severe weather monitoring — cyclones, floods, heatwaves, cold waves, and thunderstorm warnings.",
     color: "from-orange-400 to-red-500",
     iconColor: "text-orange-500",
   },
   {
+    icon: Mic,
+    title: "Voice Input",
+    description: "Speak your weather query naturally. Designed for rural accessibility where typing may be difficult.",
+    color: "from-rose-400 to-pink-500",
+    iconColor: "text-rose-500",
+  },
+  {
+    icon: Languages,
+    title: "10 Indian Languages",
+    description: "Full multilingual support — English, Hindi, Tamil, Bengali, Telugu, Marathi, Gujarati, Kannada, Malayalam, and Punjabi.",
+    color: "from-violet-400 to-indigo-500",
+    iconColor: "text-violet-500",
+  },
+  {
     icon: MessageCircle,
     title: "AI-Powered Chat",
-    description: "Ask anything — weather questions, general knowledge, or just chat. Our AI assistant handles all conversations naturally.",
-    color: "from-violet-400 to-pink-500",
-    iconColor: "text-violet-500",
+    description: "Ask anything — weather questions, general knowledge, or just chat. Our AI handles all conversations naturally.",
+    color: "from-teal-400 to-cyan-500",
+    iconColor: "text-teal-500",
   },
   {
     icon: Globe,
@@ -50,7 +64,7 @@ const FEATURES = [
 
 const STATS = [
   { value: "200K+", label: "Locations", icon: MapPin },
-  { value: "7-Day", label: "Forecasts", icon: CloudRain },
+  { value: "10", label: "Languages", icon: Languages },
   { value: "Real-time", label: "Updates", icon: Zap },
   { value: "24/7", label: "Available", icon: Shield },
 ];

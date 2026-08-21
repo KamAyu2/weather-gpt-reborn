@@ -24,6 +24,8 @@ import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { VoiceInput } from "@/components/chat/VoiceInput";
 import { DashboardHome } from "@/components/dashboard/DashboardHome";
 import { Id } from "@/convex/_generated/dataModel";
+import { useLanguage, LANGUAGES, type Language } from "@/lib/i18n";
+import { Globe } from "lucide-react";
 
 type View = "home" | "chat" | "starred";
 
@@ -36,6 +38,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
+  const { language, setLanguage, translate } = useLanguage();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -209,6 +212,34 @@ export default function Dashboard() {
                 {currentTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
                 {currentTheme === "dark" ? "Light Mode" : "Dark Mode"}
               </button>
+
+              {/* Language Selector */}
+              <div className="relative group">
+                <button
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  <span>{LANGUAGES[language]?.native || "English"}</span>
+                </button>
+                <div className="absolute left-0 top-full z-50 mt-1 hidden w-48 rounded-xl border border-border/60 bg-background shadow-xl group-hover:block">
+                  <div className="p-1.5 max-h-64 overflow-y-auto">
+                    {(Object.entries(LANGUAGES) as [Language, typeof LANGUAGES[Language]][]).map(([code, lang]) => (
+                      <button
+                        key={code}
+                        onClick={() => setLanguage(code)}
+                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+                          language === code
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-foreground hover:bg-muted/50"
+                        }`}
+                      >
+                        <span className="text-sm">{lang.flag}</span>
+                        <span>{lang.native}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Conversations */}

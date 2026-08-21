@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
-import { Cloud, Star, User } from "lucide-react";
+import { Cloud, Star, User, Sprout, AlertTriangle } from "lucide-react";
 import { WeatherCard } from "@/components/weather/WeatherCard";
+import { AgriAdvisory } from "@/components/weather/AgriAdvisory";
+import { DisasterAlerts } from "@/components/weather/DisasterAlerts";
+import { WeatherChart } from "@/components/weather/WeatherChart";
 import type { WeatherData } from "@/convex/weather";
 
 interface ChatMessageProps {
@@ -102,10 +105,19 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
 
       <div className={`max-w-[85%] ${isUser ? "" : "w-full max-w-2xl"}`}>
         {hasWeatherData && metadata?.weatherData ? (
-          /* ─── Weather Response: Card + Conversational Text ──────────────── */
+          /* ─── Weather Response: Card + Chart + Advisories + Text ──────── */
           <div className="space-y-3">
             {/* Weather Card */}
             <WeatherCard weatherData={metadata.weatherData} />
+            
+            {/* Weather Data Chart */}
+            <WeatherChart weatherData={metadata.weatherData} />
+
+            {/* Disaster Alerts */}
+            <DisasterAlerts weatherData={metadata.weatherData} location={metadata.location} />
+
+            {/* Agriculture Advisory */}
+            <AgriAdvisory weatherData={metadata.weatherData} />
             
             {/* Conversational follow-up */}
             {conversationalText && (
