@@ -1,0 +1,238 @@
+import { Droplets, Wind, Eye, Gauge, Sunrise, Sunset, Thermometer, AlertTriangle } from "lucide-react";
+import { WeatherIcon, getWeatherIconInfo } from "./WeatherIcon";
+import type { WeatherData } from "@/convex/weather";
+
+interface WeatherCardProps {
+  weatherData: WeatherData;
+  compact?: boolean;
+}
+
+function getWindDirection(degrees: number): string {
+  const directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  return directions[Math.round(degrees / 22.5) % 16];
+}
+
+function getUVLevel(uv: number): { label: string; color: string } {
+  if (uv <= 2) return { label: "Low", color: "text-emerald-500" };
+  if (uv <= 5) return { label: "Moderate", color: "text-amber-500" };
+  if (uv <= 7) return { label: "High", color: "text-orange-500" };
+  if (uv <= 10) return { label: "Very High", color: "text-red-500" };
+  return { label: "Extreme", color: "text-red-600" };
+}
+
+function getWeatherDescription(code: number): string {
+  const descriptions: Record<number, string> = {
+    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
+    45: "Foggy", 48: "Rime fog",
+    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
+    61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
+    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
+    80: "Rain showers", 81: "Moderate showers", 82: "Heavy showers",
+    95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm",
+  };
+  return descriptions[code] || "Unknown";
+}
+
+function formatDay(index: number): string {
+  if (index === 0) return "Today";
+  if (index === 1) return "Tmrw";
+  return new Date(Date.now() + index * 86400000).toLocaleDateString("en-US", { weekday: "short" });
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+// ─── Stat Item ───────────────────────────────────────────────────────────────
+
+function StatItem({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub?: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1.5 text-muted-foreground/60">
+        <Icon className="h-3 w-3" />
+        <span className="text-[10px] font-medium uppercase tracking-wider">{label}</span>
+      </div>
+      <span className="text-sm font-medium tracking-tight">{value}</span>
+      {sub && <span className="text-[10px] text-muted-foreground/50">{sub}</span>}
+    </div>
+  );
+}
+
+// ─── Alert Banner ────────────────────────────────────────────────────────────
+
+function AlertBanner({ type, message }: { type: "heat" | "cold" | "wind" | "uv" | "storm"; message: string }) {
+  const styles = {
+    heat:  "border-amber-500/30 bg-amber-500/5 text-amber-600",
+    cold:  "border-sky-500/30 bg-sky-500/5 text-sky-600",
+    wind:  "border-orange-500/30 bg-orange-500/5 text-orange-600",
+    uv:    "border-red-500/30 bg-red-500/5 text-red-600",
+    storm: "border-violet-500/30 bg-violet-500/5 text-violet-600",
+  };
+  return (
+    <div className={`flex items-start gap-2.5 rounded-xl border px-4 py-3 mt-4 ${styles[type]}`}>
+      <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+      <p className="text-xs leading-relaxed">{message}</p>
+    </div>
+  );
+}
+
+// ─── Compact Card (for dashboard widget) ─────────────────────────────────────
+
+export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }) {
+  const { location, current, daily } = weatherData;
+  const today = daily[0];
+  const uv = getUVLevel(current.uvIndex);
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-muted/20 p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[11px] text-muted-foreground">{location.name}, {location.country}</p>
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className="text-3xl font-light tracking-tighter">{Math.round(current.temperature)}</span>
+            <span className="text-lg text-muted-foreground">°C</span>
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{getWeatherDescription(current.weatherCode)}</p>
+        </div>
+        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${getWeatherIconInfo(current.weatherCode).bg}`}>
+          <WeatherIcon code={current.weatherCode} size={28} />
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        <StatItem icon={Thermometer} label="Feels" value={`${Math.round(current.apparentTemperature)}°`} />
+        <StatItem icon={Droplets} label="Humidity" value={`${current.humidity}%`} />
+        <StatItem icon={Wind} label="Wind" value={`${Math.round(current.windSpeed)} km/h`} sub={getWindDirection(current.windDirection)} />
+      </div>
+
+      {today && (
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/30 px-3 py-2">
+          <div className="flex items-center gap-3 text-[11px]">
+            <span className="text-muted-foreground">High {Math.round(today.temperatureMax)}°</span>
+            <span className="text-muted-foreground/40">·</span>
+            <span className="text-muted-foreground">Low {Math.round(today.temperatureMin)}°</span>
+          </div>
+          {today.sunrise && (
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+              <Sunrise className="h-3 w-3" />
+              {formatTime(today.sunrise)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Full Card (for chat responses) ──────────────────────────────────────────
+
+export function WeatherCard({ weatherData }: WeatherCardProps) {
+  const { location, current, daily } = weatherData;
+  const today = daily[0];
+  const uv = getUVLevel(current.uvIndex);
+  const windDir = getWindDirection(current.windDirection);
+
+  // Determine alerts
+  const alerts: Array<{ type: "heat" | "cold" | "wind" | "uv" | "storm"; message: string }> = [];
+  if (current.temperature >= 40) alerts.push({ type: "heat", message: "Heat advisory: Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure." });
+  else if (current.temperature <= 0) alerts.push({ type: "cold", message: "Cold advisory: Freezing conditions. Take precautions against frostbite and hypothermia." });
+  if (current.windSpeed >= 50) alerts.push({ type: "wind", message: "Wind advisory: Strong winds detected. Secure loose objects and avoid outdoor activities." });
+  if (current.uvIndex >= 8) alerts.push({ type: "uv", message: `UV alert: Very high UV exposure (${current.uvIndex}). Use SPF 30+ sunscreen and wear protective clothing.` });
+  if (current.weatherCode >= 95) alerts.push({ type: "storm", message: "Severe weather alert: Thunderstorm activity in the area. Seek shelter indoors immediately." });
+
+  return (
+    <div className="rounded-2xl border border-border/50 bg-muted/20 overflow-hidden">
+      {/* ─── Header ──────────────────────────────────────────────────────── */}
+      <div className="p-6 pb-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">
+              {location.name}{location.country ? `, ${location.country}` : ""}
+            </p>
+            <div className="mt-2 flex items-baseline gap-1">
+              <span className="text-5xl font-light tracking-tighter leading-none">
+                {Math.round(current.temperature)}
+              </span>
+              <span className="text-xl text-muted-foreground font-light">°C</span>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Feels like {Math.round(current.apparentTemperature)}° · {getWeatherDescription(current.weatherCode)}
+            </p>
+          </div>
+          <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${getWeatherIconInfo(current.weatherCode).bg}`}>
+            <WeatherIcon code={current.weatherCode} size={32} />
+          </div>
+        </div>
+
+        {/* ─── Stats Grid ─────────────────────────────────────────────────── */}
+        <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+          <StatItem icon={Droplets} label="Humidity" value={`${current.humidity}%`} />
+          <StatItem icon={Wind} label="Wind" value={`${Math.round(current.windSpeed)} km/h`} sub={windDir} />
+          <StatItem icon={Eye} label="UV Index" value={`${current.uvIndex}`} sub={uv.label} />
+          <StatItem icon={Gauge} label="Pressure" value={`${Math.round(current.pressure)} hPa`} />
+        </div>
+
+        {/* ─── Today Row ──────────────────────────────────────────────────── */}
+        {today && (
+          <div className="mt-5 flex flex-wrap items-center gap-4 rounded-xl bg-muted/30 px-4 py-3 text-xs">
+            <div className="flex items-center gap-1.5 text-muted-foreground">
+              <Thermometer className="h-3.5 w-3.5" />
+              <span>{Math.round(today.temperatureMin)}° / {Math.round(today.temperatureMax)}°</span>
+            </div>
+            {today.precipitationProbabilityMax > 0 && (
+              <span className="text-blue-500">{today.precipitationProbabilityMax}% rain</span>
+            )}
+            {today.sunrise && (
+              <div className="flex items-center gap-1 text-muted-foreground/60">
+                <Sunrise className="h-3 w-3" />
+                {formatTime(today.sunrise)}
+              </div>
+            )}
+            {today.sunset && (
+              <div className="flex items-center gap-1 text-muted-foreground/60">
+                <Sunset className="h-3 w-3" />
+                {formatTime(today.sunset)}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ─── 7-Day Forecast ─────────────────────────────────────────────── */}
+      <div className="border-t border-border/50 px-6 py-4">
+        <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+          7-Day Forecast
+        </p>
+        <div className="grid grid-cols-7 gap-1">
+          {daily.slice(0, 7).map((day, i) => (
+            <div key={i} className="flex flex-col items-center gap-1.5 rounded-lg px-1 py-2 transition-colors hover:bg-muted/30">
+              <span className="text-[10px] font-medium text-muted-foreground">{formatDay(i)}</span>
+              <WeatherIcon code={day.weatherCode} size={18} />
+              <span className="text-xs font-medium">{Math.round(day.temperatureMax)}°</span>
+              <span className="text-[10px] text-muted-foreground/50">{Math.round(day.temperatureMin)}°</span>
+              {day.precipitationProbabilityMax > 20 && (
+                <span className="text-[9px] text-blue-500">{day.precipitationProbabilityMax}%</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ─── Alerts ──────────────────────────────────────────────────────── */}
+      {alerts.length > 0 && (
+        <div className="border-t border-border/50 px-6 py-4">
+          {alerts.map((alert, i) => (
+            <AlertBanner key={i} type={alert.type} message={alert.message} />
+          ))}
+        </div>
+      )}
+
+      {/* ─── Footer ──────────────────────────────────────────────────────── */}
+      <div className="border-t border-border/50 bg-muted/10 px-6 py-2.5">
+        <p className="text-center text-[10px] text-muted-foreground/40">
+          Data from Open-Meteo · Not for aviation or safety-critical use
+        </p>
+      </div>
+    </div>
+  );
+}

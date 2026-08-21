@@ -419,6 +419,7 @@ export default function Dashboard() {
                             starred={msg.starred}
                             messageId={msg._id}
                             onToggleStar={handleToggleStar}
+                            metadata={msg.metadata}
                           />
                         ))}
                         {isLoading && <TypingIndicator />}

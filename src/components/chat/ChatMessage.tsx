@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { Cloud, Star, User } from "lucide-react";
+import { WeatherCard } from "@/components/weather/WeatherCard";
+import type { WeatherData } from "@/convex/weather";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -8,6 +10,13 @@ interface ChatMessageProps {
   starred?: boolean;
   messageId?: string;
   onToggleStar?: (messageId: string) => void;
+  metadata?: {
+    location?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+    weatherData?: WeatherData;
+  };
 }
 
 function formatTime(timestamp?: number): string {
@@ -68,8 +77,9 @@ function parseMarkdown(text: string): React.ReactNode[] {
   return elements;
 }
 
-export function ChatMessage({ role, content, timestamp, starred, messageId, onToggleStar }: ChatMessageProps) {
+export function ChatMessage({ role, content, timestamp, starred, messageId, onToggleStar, metadata }: ChatMessageProps) {
   const isUser = role === "user";
+  const hasWeatherData = !isUser && metadata?.weatherData;
 
   return (
     <motion.div
@@ -84,23 +94,31 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
         </div>
       )}
 
-      <div
-        className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-          isUser
-            ? "bg-foreground text-background rounded-br-md"
-            : "bg-muted/50 text-foreground rounded-bl-md"
-        }`}
-      >
-        <div className="whitespace-pre-wrap break-words">
-          {isUser ? content : parseMarkdown(content)}
-        </div>
+      <div className={`max-w-[85%] ${isUser ? "" : "w-full max-w-2xl"}`}>
+        {hasWeatherData && metadata?.weatherData ? (
+          /* ─── Weather Card ────────────────────────────────────────────── */
+          <div className="space-y-2">
+            <WeatherCard weatherData={metadata.weatherData} />
+          </div>
+        ) : (
+          /* ─── Text Message ────────────────────────────────────────────── */
+          <div
+            className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              isUser
+                ? "bg-foreground text-background rounded-br-md"
+                : "bg-muted/50 text-foreground rounded-bl-md"
+            }`}
+          >
+            <div className="whitespace-pre-wrap break-words">
+              {isUser ? content : parseMarkdown(content)}
+            </div>
+          </div>
+        )}
+
+        {/* ─── Message Footer (time + star) ──────────────────────────────── */}
         <div className={`mt-1.5 flex items-center gap-2 ${isUser ? "justify-end" : "justify-between"}`}>
           {timestamp && (
-            <span
-              className={`text-[10px] ${
-                isUser ? "text-background/50" : "text-muted-foreground/50"
-              }`}
-            >
+            <span className={`text-[10px] ${isUser ? "text-background/50" : "text-muted-foreground/50"}`}>
               {formatTime(timestamp)}
             </span>
           )}

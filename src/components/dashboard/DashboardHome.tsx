@@ -1,17 +1,51 @@
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Cloud, MapPin, Star, Thermometer, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { WeatherCardCompact } from "@/components/weather/WeatherCard";
+import type { WeatherData } from "@/convex/weather";
 
 interface DashboardHomeProps {
   onSelectConversation: (id: string) => void;
   onAskQuestion: (text: string) => void;
 }
 
+const DEFAULT_LOCATIONS = ["Mumbai", "New York", "London", "Tokyo", "Delhi"];
+
 export function DashboardHome({ onSelectConversation, onAskQuestion }: DashboardHomeProps) {
   const starredMessages = useQuery(api.chat.getStarredMessages);
   const conversations = useQuery(api.chat.getConversations);
+  const geocode = useAction(api.weather.geocodeLocation);
+  const fetchWeather = useAction(api.weather.fetchWeather);
+
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherLocation, setWeatherLocation] = useState("Mumbai");
+
+  const loadWeather = async (city: string) => {
+    setWeatherLoading(true);
+    setWeatherLocation(city);
+    try {
+      const results = await geocode({ query: city });
+      if (results && results.length > 0) {
+        const best = results[0];
+        const data = await fetchWeather({
+          latitude: best.latitude,
+          longitude: best.longitude,
+          locationName: best.name,
+          country: best.country,
+          timezone: best.timezone || "auto",
+        });
+        setWeatherData(data);
+      }
+    } catch (err) {
+      console.error("Failed to load weather:", err);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto">
@@ -28,12 +62,66 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           </p>
         </motion.div>
 
+        {/* ─── Live Weather Widget ──────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+          className="mt-8"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Live Weather
+            </h2>
+            <div className="flex items-center gap-1">
+              {DEFAULT_LOCATIONS.map((city) => (
+                <button
+                  key={city}
+                  onClick={() => loadWeather(city)}
+                  className={`rounded-full px-2.5 py-1 text-[10px] transition-colors ${
+                    weatherLocation === city && weatherData
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  {city}
+                </button>
+              ))}
+              <button
+                onClick={() => loadWeather(weatherLocation)}
+                disabled={weatherLoading}
+                className="ml-1 rounded-full p-1.5 text-muted-foreground hover:bg-muted/50 transition-colors disabled:opacity-50"
+                title="Refresh"
+              >
+                <RefreshCw className={`h-3 w-3 ${weatherLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+          </div>
+
+          {weatherData ? (
+            <WeatherCardCompact weatherData={weatherData} />
+          ) : (
+            <button
+              onClick={() => loadWeather("Mumbai")}
+              className="w-full rounded-2xl border border-dashed border-border/50 bg-muted/10 p-8 text-center transition-colors hover:bg-muted/20"
+            >
+              <Cloud className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                {weatherLoading ? "Loading weather data..." : "Click to load live weather"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground/50">
+                Real-time conditions from Open-Meteo
+              </p>
+            </button>
+          )}
+        </motion.div>
+
         {/* Quick Actions */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="mt-8"
+          className="mt-10"
         >
           <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Ask a question
