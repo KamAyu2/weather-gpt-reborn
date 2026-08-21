@@ -131,59 +131,108 @@ function parseQuery(userMessage: string): ParsedQuery {
 
 // ─── Response generation ────────────────────────────────────────────────────
 
+function generateConversationalGreeting(data: import("./weather").WeatherData, userQuery: string): string {
+  const { location, current } = data;
+  const condition = getWeatherDescription(current.weatherCode);
+  const hour = new Date().getHours();
+  const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  
+  // Generate a conversational intro based on conditions
+  const greetings = [
+    `Good ${timeOfDay}! I just checked the weather in ${location.name} for you.`,
+    `Here's what's happening in ${location.name} right now!`,
+    `Great question! Let me tell you about the weather in ${location.name}.`,
+    `I pulled up the latest conditions for ${location.name}.`,
+  ];
+  
+  let intro = greetings[Math.floor(Math.random() * greetings.length)];
+  
+  // Add context based on weather conditions
+  if (current.temperature >= 35) {
+    intro += ` It's quite hot out there — ${Math.round(current.temperature)}°C and ${condition.toLowerCase()}. You might want to stay hydrated if you're heading out!`;
+  } else if (current.temperature <= 10) {
+    intro += ` It's chilly at ${Math.round(current.temperature)}°C with ${condition.toLowerCase()}. Might want to grab a jacket!`;
+  } else if (current.weatherCode >= 61 && current.weatherCode <= 65) {
+    intro += ` Heads up — it's raining in ${location.name} right now. ${current.precipitation > 0 ? `We're getting ${current.precipitation}mm of rain.` : "You'll want to bring an umbrella!"}`;
+  } else if (current.weatherCode >= 95) {
+    intro += ` ⚠️ There's a thunderstorm in ${location.name} right now. Please stay safe and avoid outdoor activities!`;
+  } else if (current.uvIndex >= 8) {
+    intro += ` Just a heads up — the UV index is very high at ${current.uvIndex}. If you're going outside, sunscreen is a must!`;
+  } else if (current.weatherCode <= 1) {
+    intro += ` It's a beautiful ${condition.toLowerCase()} day there — perfect weather to be outside!`;
+  } else {
+    intro += ` The conditions are ${condition.toLowerCase()} with temperatures around ${Math.round(current.temperature)}°C.`;
+  }
+  
+  return intro;
+}
+
 function generateCurrentResponse(
   data: import("./weather").WeatherData,
   userQuery: string
 ): { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } } {
   const { location, current, daily } = data;
   const today = daily[0];
-  const icon = getWeatherIcon(current.weatherCode);
   const condition = getWeatherDescription(current.weatherCode);
   const windDir = getWindDirection(current.windDirection);
   const uvLevel = getUVLevel(current.uvIndex);
 
-  let text = `${icon} **Weather in ${location.name}, ${location.country}**\n\n`;
-  text += `**Now:** ${condition}\n`;
-  text += `**Temperature:** ${current.temperature}°C (feels like ${current.apparentTemperature}°C)\n`;
-  text += `**Humidity:** ${current.humidity}%\n`;
-  text += `**Wind:** ${current.windSpeed} km/h ${windDir}\n`;
-
+  // Build conversational response
+  let text = generateConversationalGreeting(data, userQuery);
+  
+  // Add key highlights conversationally
+  text += `\n\nHere are the details:\n`;
+  text += `• **Temperature:** ${current.temperature}°C (feels like ${current.apparentTemperature}°C)\n`;
+  text += `• **Conditions:** ${condition}\n`;
+  text += `• **Humidity:** ${current.humidity}%\n`;
+  text += `• **Wind:** ${current.windSpeed} km/h ${windDir}\n`;
+  
   if (current.precipitation > 0) {
-    text += `**Precipitation:** ${current.precipitation} mm\n`;
+    text += `• **Precipitation:** ${current.precipitation} mm\n`;
   }
-
-  text += `**Cloud Cover:** ${current.cloudCover}%\n`;
-  text += `**Pressure:** ${current.pressure} hPa\n`;
-  text += `**UV Index:** ${current.uvIndex} (${uvLevel})\n`;
-
+  
+  text += `• **UV Index:** ${current.uvIndex} (${uvLevel})\n`;
+  
   if (today) {
-    text += `\n**Today's Range:** ${today.temperatureMin}°C – ${today.temperatureMax}°C\n`;
-    text += `**Rain Probability:** ${today.precipitationProbabilityMax}%\n`;
-
+    text += `\n**Today's forecast:**\n`;
+    text += `• High of ${today.temperatureMax}°C, low of ${today.temperatureMin}°C\n`;
+    if (today.precipitationProbabilityMax > 0) {
+      text += `• ${today.precipitationProbabilityMax}% chance of rain\n`;
+    }
     if (today.sunrise && today.sunset) {
       const sunrise = new Date(today.sunrise).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
       const sunset = new Date(today.sunset).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-      text += `**Sunrise:** ${sunrise} · **Sunset:** ${sunset}\n`;
+      text += `• Sunrise at ${sunrise}, sunset at ${sunset}\n`;
     }
   }
-
+  
+  // Add conversational advice
+  text += `\n`;
+  if (current.temperature >= 35) {
+    text += `💡 **Tip:** Stay hydrated and try to stay in shaded areas during peak hours.`;
+  } else if (current.temperature <= 5) {
+    text += `💡 **Tip:** Dress in layers and keep warm! Hot drinks will be your friend today.`;
+  } else if (current.weatherCode >= 61 && current.weatherCode <= 65) {
+    text += `💡 **Tip:** Don't forget your umbrella or raincoat if you're heading out.`;
+  } else if (current.uvIndex >= 6) {
+    text += `💡 **Tip:** Apply sunscreen SPF 30+ and wear sunglasses.`;
+  } else {
+    text += `💡 **Tip:** Great conditions to be outdoors! Enjoy the weather.`;
+  }
+  
   // Add alerts for extreme conditions
   if (current.temperature >= 40) {
-    text += `\n⚠️ **Heat advisory:** Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure.`;
+    text += `\n\n⚠️ **Heat advisory:** Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure.`;
   } else if (current.temperature <= 0) {
-    text += `\n⚠️ **Cold advisory:** Freezing conditions. Take precautions against frostbite.`;
+    text += `\n\n⚠️ **Cold advisory:** Freezing conditions. Take precautions against frostbite.`;
   }
-
+  
   if (current.windSpeed >= 50) {
     text += `\n⚠️ **Wind advisory:** Strong winds detected. Secure loose objects and avoid outdoor activities.`;
   }
-
-  if (current.uvIndex >= 8) {
-    text += `\n⚠️ **UV alert:** Very high UV exposure. Use SPF 30+ sunscreen and wear protective clothing.`;
-  }
-
+  
   if (current.weatherCode >= 95) {
-    text += `\n⚠️ **Severe weather alert:** Thunderstorm activity in the area. Seek shelter indoors.`;
+    text += `\n⚠️ **Severe weather alert:** Thunderstorm activity in the area. Seek shelter indoors immediately.`;
   }
 
   return {
@@ -200,39 +249,54 @@ function generateCurrentResponse(
 
 function generateForecastResponse(data: import("./weather").WeatherData): { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } } {
   const { location, daily } = data;
-
-  let text = `📅 **7-Day Forecast for ${location.name}, ${location.country}**\n\n`;
-
+  const hour = new Date().getHours();
+  const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  
+  // Conversational intro
+  const intros = [
+    `Here's what the next week looks like in ${location.name}!`,
+    `Let me walk you through the forecast for ${location.name}.`,
+    `Planning ahead? Here's the 7-day outlook for ${location.name}.`,
+  ];
+  let text = intros[Math.floor(Math.random() * intros.length)] + "\n\n";
+  
+  // Day-by-day with conversational context
   daily.forEach((day, i) => {
-    const icon = getWeatherIcon(day.weatherCode);
     const condition = getWeatherDescription(day.weatherCode);
     const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : formatDate(day.date);
 
-    text += `${icon} **${label}**\n`;
-    text += `   ${condition} · ${day.temperatureMin}°C – ${day.temperatureMax}°C`;
+    text += `**${label}:** ${condition}, ${day.temperatureMin}°C – ${day.temperatureMax}°C`;
     if (day.precipitationProbabilityMax > 0) {
-      text += ` · ${day.precipitationProbabilityMax}% rain`;
-    }
-    if (day.precipitationSum > 0) {
-      text += ` · ${day.precipitationSum}mm`;
-    }
-    text += `\n`;
-    if (day.windSpeedMax >= 40) {
-      text += `   ⚠️ Strong winds up to ${day.windSpeedMax} km/h\n`;
+      text += `, ${day.precipitationProbabilityMax}% chance of rain`;
     }
     text += `\n`;
   });
 
-  // Summary insights
+  // Summary insights conversationally
   const maxTemp = Math.max(...daily.map((d) => d.temperatureMax));
   const minTemp = Math.min(...daily.map((d) => d.temperatureMin));
   const totalRain = daily.reduce((sum, d) => sum + d.precipitationSum, 0);
   const rainyDays = daily.filter((d) => d.precipitationProbabilityMax > 50).length;
-
-  text += `📊 **Week Summary:**`;
-  text += ` ${minTemp}°C – ${maxTemp}°C`;
-  if (totalRain > 0) text += ` · ${rainyDays} rainy day${rainyDays !== 1 ? "s" : ""} expected`;
-  text += ` · Total precip: ${totalRain.toFixed(1)}mm\n`;
+  
+  text += `\n**Week at a glance:**\n`;
+  text += `• Temperatures will range from ${minTemp}°C to ${maxTemp}°C\n`;
+  if (rainyDays > 0) {
+    text += `• Expect ${rainyDays} rainy day${rainyDays !== 1 ? "s" : ""} this week\n`;
+  } else {
+    text += `• Looks like a mostly dry week ahead!\n`;
+  }
+  
+  // Conversational advice
+  text += `\n`;
+  if (rainyDays >= 4) {
+    text += `☔ **Week outlook:** Quite a wet week ahead — keep that umbrella handy!`;
+  } else if (maxTemp >= 35) {
+    text += `🔥 **Week outlook:** Hot week coming up — plan outdoor activities for cooler parts of the day.`;
+  } else if (minTemp <= 0) {
+    text += `❄️ **Week outlook:** Cold week ahead — dress warm and watch for possible frost.`;
+  } else {
+    text += `🌤️ **Week outlook:** Pretty pleasant conditions overall — great week to be outdoors!`;
+  }
 
   return {
     text,

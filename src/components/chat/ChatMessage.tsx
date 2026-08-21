@@ -81,6 +81,12 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
   const isUser = role === "user";
   const hasWeatherData = !isUser && metadata?.weatherData;
 
+  // Extract conversational text (remove the weather card formatted parts)
+  // The conversational text is everything before the card-formatted data
+  const conversationalText = hasWeatherData
+    ? content.split("\n\n**")[0].replace(/^\*?\*?/g, "").trim()
+    : content;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -89,23 +95,33 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
       className={`group flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted mt-0.5">
-          <Cloud className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 mt-0.5">
+          <Cloud className="h-3.5 w-3.5 text-primary" />
         </div>
       )}
 
       <div className={`max-w-[85%] ${isUser ? "" : "w-full max-w-2xl"}`}>
         {hasWeatherData && metadata?.weatherData ? (
-          /* ─── Weather Card ────────────────────────────────────────────── */
-          <div className="space-y-2">
+          /* ─── Weather Response: Card + Conversational Text ──────────────── */
+          <div className="space-y-3">
+            {/* Weather Card */}
             <WeatherCard weatherData={metadata.weatherData} />
+            
+            {/* Conversational follow-up */}
+            {conversationalText && (
+              <div className="rounded-2xl bg-muted/50 px-4 py-3 text-sm leading-relaxed text-foreground rounded-bl-md">
+                <div className="whitespace-pre-wrap break-words">
+                  {parseMarkdown(conversationalText)}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* ─── Text Message ────────────────────────────────────────────── */
           <div
             className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
               isUser
-                ? "bg-foreground text-background rounded-br-md"
+                ? "bg-gradient-to-br from-primary to-primary/90 text-white rounded-br-md shadow-sm"
                 : "bg-muted/50 text-foreground rounded-bl-md"
             }`}
           >
@@ -118,7 +134,7 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
         {/* ─── Message Footer (time + star) ──────────────────────────────── */}
         <div className={`mt-1.5 flex items-center gap-2 ${isUser ? "justify-end" : "justify-between"}`}>
           {timestamp && (
-            <span className={`text-[10px] ${isUser ? "text-background/50" : "text-muted-foreground/50"}`}>
+            <span className={`text-[10px] ${isUser ? "text-primary/50" : "text-muted-foreground/50"}`}>
               {formatTime(timestamp)}
             </span>
           )}
@@ -139,8 +155,8 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
       </div>
 
       {isUser && (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted mt-0.5">
-          <User className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/90 mt-0.5 shadow-sm">
+          <User className="h-3.5 w-3.5 text-white" />
         </div>
       )}
     </motion.div>
