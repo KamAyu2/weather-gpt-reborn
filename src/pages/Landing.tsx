@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star } from "lucide-react";
+import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router";
+import { useTheme } from "@/hooks/use-theme";
 
 const FEATURES = [
   {
@@ -44,6 +45,7 @@ const STATS = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
 
   const handleGetStarted = () => {
     navigate("/auth?returnTo=/dashboard");
@@ -66,6 +68,13 @@ export default function Landing() {
             <span className="text-sm font-semibold tracking-tight">Weather Chat</span>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-border/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+              title="Toggle theme"
+            >
+              {currentTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <button
               onClick={handleGetStarted}
               className="inline-flex h-9 items-center gap-2 rounded-full bg-foreground px-4 text-xs font-medium text-background transition-all hover:opacity-90"

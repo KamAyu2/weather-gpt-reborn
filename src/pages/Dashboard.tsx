@@ -11,7 +11,10 @@ import {
   PanelLeft,
   LayoutDashboard,
   MessageSquare,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router";
 import { ChatMessage } from "@/components/chat/ChatMessage";
@@ -31,6 +34,7 @@ export default function Dashboard() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { resolved: currentTheme, toggle: toggleTheme } = useTheme();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -195,6 +199,15 @@ export default function Dashboard() {
                   </span>
                 )}
               </button>
+
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+              >
+                {currentTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+                {currentTheme === "dark" ? "Light Mode" : "Dark Mode"}
+              </button>
             </div>
 
             {/* Conversations */}
@@ -245,6 +258,15 @@ export default function Dashboard() {
         {/* Header */}
         <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">
           <div className="flex items-center gap-2">
+            {!sidebarOpen && (
+              <button
+                onClick={toggleTheme}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted transition-colors"
+                title="Toggle theme"
+              >
+                {currentTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+              </button>
+            )}
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
