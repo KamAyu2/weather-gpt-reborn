@@ -1,7 +1,6 @@
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect } from "react";
-import { Cloud, MapPin, Star, Thermometer, Wind, Droplets, Sun, ArrowRight } from "lucide-react";
+import { Cloud, MapPin, Star, Thermometer, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 
@@ -52,7 +51,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           {[
             { icon: Cloud, label: "Conversations", value: conversations?.length ?? 0 },
             { icon: Star, label: "Saved Messages", value: starredMessages?.length ?? 0 },
-            { icon: MapPin, label: "Locations Queried", value: new Set(starredMessages?.map((m) => m.metadata?.location).filter(Boolean)).size },
+            { icon: MapPin, label: "Locations Queried", value: starredMessages ? new Set(starredMessages.map((m) => m.metadata?.location).filter(Boolean)).size : 0 },
             { icon: Thermometer, label: "Data Points", value: "Live" },
           ].map((stat) => (
             <div
