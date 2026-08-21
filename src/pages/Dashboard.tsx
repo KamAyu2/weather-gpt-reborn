@@ -23,11 +23,12 @@ import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { VoiceInput } from "@/components/chat/VoiceInput";
 import { DashboardHome } from "@/components/dashboard/DashboardHome";
+import { WeatherComparison } from "@/components/weather/WeatherComparison";
 import { Id } from "@/convex/_generated/dataModel";
 import { useLanguage, LANGUAGES, type Language } from "@/lib/i18n";
-import { Globe } from "lucide-react";
+import { Globe, GitCompare } from "lucide-react";
 
-type View = "home" | "chat" | "starred";
+type View = "home" | "chat" | "starred" | "compare";
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -188,6 +189,17 @@ export default function Dashboard() {
                 New Chat
               </button>
               <button
+                onClick={() => setView("compare")}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                  view === "compare"
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
+              >
+                <GitCompare className="h-3.5 w-3.5" />
+                Compare Cities
+              </button>
+              <button
                 onClick={() => setView("starred")}
                 className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
                   view === "starred"
@@ -327,6 +339,12 @@ export default function Dashboard() {
                 <span className="text-xs text-muted-foreground">Dashboard</span>
               </div>
             )}
+            {sidebarOpen && view === "compare" && (
+              <div className="flex items-center gap-2">
+                <GitCompare className="h-3.5 w-3.5 text-muted-foreground/50" />
+                <span className="text-xs text-muted-foreground">Compare Cities</span>
+              </div>
+            )}
             {sidebarOpen && view === "starred" && (
               <div className="flex items-center gap-2">
                 <Star className="h-3.5 w-3.5 text-muted-foreground/50" />
@@ -352,6 +370,27 @@ export default function Dashboard() {
                   onSelectConversation={(id) => handleSelectConversation(id as Id<"conversations">)}
                   onAskQuestion={handleDashboardAsk}
                 />
+              </motion.div>
+            )}
+
+            {view === "compare" && (
+              <motion.div
+                key="compare"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="h-full overflow-y-auto"
+              >
+                <div className="mx-auto max-w-4xl px-6 py-10">
+                  <h1 className="text-xl font-semibold tracking-tight">Compare Cities</h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Side-by-side weather comparison for up to 4 cities.
+                  </p>
+                  <div className="mt-8">
+                    <WeatherComparison />
+                  </div>
+                </div>
               </motion.div>
             )}
 

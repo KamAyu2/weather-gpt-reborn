@@ -2,6 +2,8 @@ import { motion } from "framer-motion";
 import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon, MessageCircle, Zap, Shield, Sprout, AlertTriangle, Mic, Languages } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/hooks/use-theme";
+import { LiveDemo } from "@/components/landing/LiveDemo";
+import { TechStack } from "@/components/landing/TechStack";
 
 const FEATURES = [
   {
@@ -242,6 +244,12 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ─── Live Demo ──────────────────────────────────────────────────── */}
+      <LiveDemo />
+
+      {/* ─── Tech Stack ──────────────────────────────────────────────────── */}
+      <TechStack />
 
       {/* ─── CTA ─────────────────────────────────────────────────────────── */}
       <section className="border-t border-border/50 py-24 bg-gradient-to-br from-primary/5 via-background to-primary/10">
