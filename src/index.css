@@ -21,7 +21,6 @@
 /* Desktop: normal scrolling */
 html {
   -webkit-tap-highlight-color: transparent;
-  scroll-behavior: smooth;
 }
 
 /* Safe area insets for notched phones */

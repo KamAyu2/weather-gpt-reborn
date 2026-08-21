@@ -1,5 +1,5 @@
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { Cloud, ArrowRight, Sparkles, Zap, Globe, MapPin } from "lucide-react";
 
 const TYPING_TEXTS = [
@@ -96,17 +96,8 @@ function FloatingIcon({ icon: Icon, color, delay, x, y }: {
 }
 
 export function AnimatedHero() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-
-  const y = useTransform(scrollYProgress, [0, 1], [0, 100]);
-  const opacity = useTransform(scrollYProgress, [0, 0.4], [1, 0]);
-
   return (
-    <div ref={ref} className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
+    <div className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
       {/* Animated gradient background */}
       <div className="absolute inset-0">
         <motion.div
@@ -157,7 +148,7 @@ export function AnimatedHero() {
         <FloatingIcon icon={Globe} color="text-violet-400/40" delay={4.5} x={12} y={-3} />
       </div>
 
-      <motion.div style={{ y, opacity }} className="relative z-10 text-center px-5 sm:px-6 max-w-4xl mx-auto">
+      <div className="relative z-10 text-center px-5 sm:px-6 max-w-4xl mx-auto">
         {/* Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -246,30 +237,7 @@ export function AnimatedHero() {
             </motion.span>
           ))}
         </motion.div>
-      </motion.div>
-
-      {/* Scroll indicator - hidden on mobile */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2 }}
-        className="absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 hidden sm:block"
-      >
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="flex flex-col items-center gap-2"
-        >
-          <span className="text-[10px] text-muted-foreground/40">Scroll to explore</span>
-          <div className="h-6 w-4 rounded-full border border-border/50 flex items-start justify-center pt-1.5">
-            <motion.div
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="h-1.5 w-1 rounded-full bg-primary/40"
-            />
-          </div>
-        </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 }

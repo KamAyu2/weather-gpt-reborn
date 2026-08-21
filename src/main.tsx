@@ -41,6 +41,8 @@ function AppWithSplash({ children }: { children: React.ReactNode }) {
   const handleSplashComplete = () => {
     sessionStorage.setItem("weather-chat-loaded", "true");
     setShowSplash(false);
+    // Reset scroll position after splash
+    window.scrollTo(0, 0);
   };
 
   if (showSplash) {
