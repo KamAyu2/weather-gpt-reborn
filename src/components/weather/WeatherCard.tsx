@@ -84,7 +84,7 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
   const uv = getUVLevel(current.uvIndex);
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-muted/20 p-5">
+    <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-[11px] text-muted-foreground">{location.name}, {location.country}</p>
@@ -141,7 +141,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
   if (current.weatherCode >= 95) alerts.push({ type: "storm", message: "Severe weather alert: Thunderstorm activity in the area. Seek shelter indoors immediately." });
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-muted/20 overflow-hidden">
+    <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 overflow-hidden shadow-sm">
       {/* ─── Header ──────────────────────────────────────────────────────── */}
       <div className="p-6 pb-4">
         <div className="flex items-start justify-between">

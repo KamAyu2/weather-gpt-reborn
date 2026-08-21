@@ -37,9 +37,9 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
+    <div className="border-t border-border/50 bg-gradient-to-t from-background to-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-3xl px-4 py-4">
-        <div className="flex items-end gap-2 rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 transition-colors focus-within:border-border">
+        <div className="flex items-end gap-2 rounded-2xl border border-border/60 bg-white/80 shadow-sm px-4 py-3 transition-colors focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/10">
           <textarea
             ref={textareaRef}
             value={value}
@@ -53,7 +53,7 @@ export function ChatInput({
           <button
             onClick={onSubmit}
             disabled={disabled || isLoading || !value.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-all hover:opacity-90 disabled:opacity-20 disabled:cursor-not-allowed"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full gradient-primary text-white transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
           >
             {isLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -146,8 +146,8 @@ export default function Dashboard() {
             {/* Logo */}
             <div className="flex h-14 items-center justify-between border-b border-border/50 px-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-foreground">
-                  <Cloud className="h-3.5 w-3.5 text-background" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-md gradient-primary shadow-sm">
+                  <Cloud className="h-3.5 w-3.5 text-white" />
                 </div>
                 <span className="text-xs font-semibold tracking-tight">Weather Chat</span>
               </div>

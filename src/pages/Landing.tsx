@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon, MessageCircle } from "lucide-react";
+import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star, Sun, Moon, MessageCircle, Zap, Shield } from "lucide-react";
 import { useNavigate } from "react-router";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -8,39 +8,51 @@ const FEATURES = [
     icon: Cloud,
     title: "Real-Time Conditions",
     description: "Current temperature, humidity, wind speed, UV index, and atmospheric pressure — updated continuously from global weather stations.",
+    color: "from-blue-400 to-cyan-500",
+    iconColor: "text-blue-500",
   },
   {
     icon: CloudRain,
     title: "7-Day Forecasts",
     description: "Daily breakdowns with precipitation probability, temperature ranges, and wind forecasts to plan with confidence.",
+    color: "from-indigo-400 to-purple-500",
+    iconColor: "text-indigo-500",
   },
   {
     icon: MapPin,
     title: "Location Search",
     description: "Ask about any city or region worldwide. Type naturally and get precise results for the location you need.",
+    color: "from-emerald-400 to-teal-500",
+    iconColor: "text-emerald-500",
   },
   {
     icon: Wind,
     title: "Weather Alerts",
     description: "Automatic warnings when conditions become extreme — heat advisories, storms, high UV, and dangerous winds.",
+    color: "from-orange-400 to-red-500",
+    iconColor: "text-orange-500",
   },
   {
     icon: MessageCircle,
     title: "AI-Powered Chat",
     description: "Ask anything — weather questions, general knowledge, or just chat. Our AI assistant handles all conversations naturally.",
+    color: "from-violet-400 to-pink-500",
+    iconColor: "text-violet-500",
   },
   {
     icon: Globe,
     title: "Global Coverage",
     description: "Meteorological data for every region on Earth. From local conditions to international forecasts.",
+    color: "from-sky-400 to-blue-500",
+    iconColor: "text-sky-500",
   },
 ];
 
 const STATS = [
-  { value: "200K+", label: "Locations" },
-  { value: "7-Day", label: "Forecasts" },
-  { value: "Real-time", label: "Updates" },
-  { value: "24/7", label: "Available" },
+  { value: "200K+", label: "Locations", icon: MapPin },
+  { value: "7-Day", label: "Forecasts", icon: CloudRain },
+  { value: "Real-time", label: "Updates", icon: Zap },
+  { value: "24/7", label: "Available", icon: Shield },
 ];
 
 export default function Landing() {
@@ -62,8 +74,8 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
-              <Cloud className="h-4 w-4 text-background" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
+              <Cloud className="h-4 w-4 text-white" />
             </div>
             <span className="text-sm font-semibold tracking-tight">Weather Chat</span>
           </div>
@@ -77,7 +89,7 @@ export default function Landing() {
             </button>
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-9 items-center gap-2 rounded-full bg-foreground px-4 text-xs font-medium text-background transition-all hover:opacity-90"
+              className="inline-flex h-9 items-center gap-2 rounded-full gradient-primary px-4 text-xs font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/25"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
@@ -87,15 +99,20 @@ export default function Landing() {
       </nav>
 
       {/* ─── Hero ────────────────────────────────────────────────────────── */}
-      <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-16">
-        <div className="mx-auto max-w-3xl text-center">
+      <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-16 relative overflow-hidden">
+        {/* Background gradient */}
+        <div className="absolute inset-0 gradient-sunny opacity-30" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/15 rounded-full blur-3xl" />
+        
+        <div className="mx-auto max-w-3xl text-center relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
           >
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-1.5 text-xs text-muted-foreground">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-xs text-muted-foreground shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Powered by live meteorological data
             </div>
           </motion.div>
@@ -108,7 +125,9 @@ export default function Landing() {
           >
             Weather intelligence
             <br />
-            <span className="text-muted-foreground">your team can act on.</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600">
+              your team can act on.
+            </span>
           </motion.h1>
 
           <motion.p
@@ -129,7 +148,7 @@ export default function Landing() {
           >
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-11 items-center gap-2.5 rounded-full bg-foreground px-6 text-sm font-medium text-background transition-all hover:opacity-90"
+              className="inline-flex h-12 items-center gap-2.5 rounded-full gradient-primary px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30"
             >
               Start using Weather Chat
               <ArrowRight className="h-4 w-4" />
@@ -145,16 +164,16 @@ export default function Landing() {
             className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-3"
           >
             {[
-              "Weather in Mumbai",
-              "Forecast for Tokyo",
-              "Is it raining in London?",
+              { text: "Weather in Mumbai", icon: Thermometer, color: "text-orange-500" },
+              { text: "Forecast for Tokyo", icon: CloudRain, color: "text-blue-500" },
+              { text: "Is it raining in London?", icon: MapPin, color: "text-emerald-500" },
             ].map((query) => (
               <div
-                key={query}
-                className="rounded-xl border border-border/50 bg-muted/30 px-4 py-3 text-left text-xs text-muted-foreground"
+                key={query.text}
+                className="rounded-xl border border-border/50 bg-white/80 backdrop-blur-sm px-4 py-3 text-left text-xs text-muted-foreground shadow-sm card-hover"
               >
-                <span className="mr-1.5 opacity-40">›</span>
-                {query}
+                <query.icon className={`h-4 w-4 ${query.color} mb-2`} />
+                {query.text}
               </div>
             ))}
           </motion.div>
@@ -162,11 +181,12 @@ export default function Landing() {
       </section>
 
       {/* ─── Stats Bar ───────────────────────────────────────────────────── */}
-      <section className="border-y border-border/50 bg-muted/20">
+      <section className="border-y border-border/50 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
         <div className="mx-auto grid max-w-4xl grid-cols-2 gap-px sm:grid-cols-4">
           {STATS.map((stat) => (
             <div key={stat.label} className="flex flex-col items-center py-8">
-              <span className="text-2xl font-semibold tracking-tight">{stat.value}</span>
+              <stat.icon className="h-5 w-5 text-primary/60 mb-2" />
+              <span className="text-2xl font-semibold tracking-tight text-primary">{stat.value}</span>
               <span className="mt-1 text-xs text-muted-foreground">{stat.label}</span>
             </div>
           ))}
@@ -186,7 +206,7 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="mt-16 grid grid-cols-1 gap-px bg-border/50 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map((feature, i) => (
               <motion.div
                 key={feature.title}
@@ -194,12 +214,12 @@ export default function Landing() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ duration: 0.4, delay: i * 0.05 }}
-                className="bg-background p-8"
+                className="rounded-2xl border border-border/50 bg-white/80 backdrop-blur-sm p-6 card-hover shadow-sm"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-border/60">
-                  <feature.icon className="h-5 w-5 text-muted-foreground" />
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color}`}>
+                  <feature.icon className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-sm font-medium">{feature.title}</h3>
+                <h3 className="text-sm font-semibold">{feature.title}</h3>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                   {feature.description}
                 </p>
@@ -210,7 +230,7 @@ export default function Landing() {
       </section>
 
       {/* ─── CTA ─────────────────────────────────────────────────────────── */}
-      <section className="border-t border-border/50 py-24">
+      <section className="border-t border-border/50 py-24 bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="mx-auto max-w-2xl px-6 text-center">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             Ready to get started?
@@ -221,7 +241,7 @@ export default function Landing() {
           <div className="mt-8">
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-11 items-center gap-2.5 rounded-full bg-foreground px-6 text-sm font-medium text-background transition-all hover:opacity-90"
+              className="inline-flex h-12 items-center gap-2.5 rounded-full gradient-primary px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30"
             >
               Open Weather Chat
               <ArrowRight className="h-4 w-4" />
@@ -231,11 +251,13 @@ export default function Landing() {
       </section>
 
       {/* ─── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border/50 py-8">
+      <footer className="border-t border-border/50 py-8 bg-muted/30">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
-            <Cloud className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Weather Chat</span>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md gradient-primary">
+              <Cloud className="h-3 w-3 text-white" />
+            </div>
+            <span className="text-xs font-medium">Weather Chat</span>
           </div>
           <span className="text-xs text-muted-foreground">
             Weather data by Open-Meteo
