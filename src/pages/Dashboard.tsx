@@ -42,6 +42,7 @@ export default function Dashboard() {
   );
   const starredMessages = useQuery(api.chat.getStarredMessages);
   const createConversation = useMutation(api.chat.createConversation) as (args: { title?: string }) => Promise<Id<"conversations">>;
+  const sendMessage = useMutation(api.chat.sendMessage);
   const processMessage = useAction(api.chat.processMessage);
   const toggleStar = useMutation(api.chat.toggleStar);
 
@@ -72,6 +73,11 @@ export default function Dashboard() {
         convId = await createConversation({ title: text.slice(0, 60) });
         setActiveConversation(convId);
       }
+
+      await sendMessage({
+        conversationId: convId,
+        content: text,
+      });
 
       await processMessage({
         conversationId: convId,

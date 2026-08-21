@@ -88,19 +88,25 @@ function parseQuery(userMessage: string): ParsedQuery {
   let intent: ParsedQuery["intent"] = "current";
   let dateRange: number | undefined;
 
-  // Extract location: look for "in/at [city]" patterns
-  const inPattern = /(?:in|at|for|of|near|around)\s+([A-Z][a-zA-Z\s]+?)(?:\s+(?:today|tomorrow|this|next|weather|forecast|temperature|how|what|will|is|the|$))/gi;
-  const inMatch = inPattern.exec(userMessage);
-  if (inMatch) {
-    location = inMatch[1].trim();
+  // Strategy 1: Check for known city names in the message (most reliable)
+  for (const city of LOCATIONS) {
+    if (msg.includes(city.toLowerCase())) {
+      location = city;
+      break;
+    }
   }
 
-  // Also check for city names mentioned directly
+  // Strategy 2: Look for prepositions and extract the text after them
   if (!location) {
-    for (const city of LOCATIONS) {
-      if (msg.includes(city.toLowerCase())) {
-        location = city;
-        break;
+    const prepositionMatch = /(?:in|at|for|of|near|around)\s+(.+)/i.exec(userMessage);
+    if (prepositionMatch) {
+      let candidate = prepositionMatch[1].trim();
+      // Remove trailing punctuation
+      candidate = candidate.replace(/[?.!,;:]+$/, "").trim();
+      // Take at most 4 words (covers multi-word city names like "New York")
+      const words = candidate.split(/\s+/).slice(0, 4).join(" ");
+      if (words.length >= 2) {
+        location = words;
       }
     }
   }
