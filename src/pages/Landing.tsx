@@ -4,6 +4,8 @@ import { useNavigate } from "react-router";
 import { useTheme } from "@/hooks/use-theme";
 import { LiveDemo } from "@/components/landing/LiveDemo";
 import { TechStack } from "@/components/landing/TechStack";
+import { AnimatedHero } from "@/components/landing/AnimatedHero";
+import { AnimatedStats } from "@/components/landing/AnimatedStats";
 
 const FEATURES = [
   {
@@ -114,100 +116,11 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* ─── Hero ────────────────────────────────────────────────────────── */}
-      <section className="flex min-h-screen flex-col items-center justify-center px-6 pt-16 relative overflow-hidden">
-        {/* Background gradient */}
-        <div className="absolute inset-0 gradient-sunny opacity-30" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-purple-400/15 rounded-full blur-3xl" />
-        
-        <div className="mx-auto max-w-3xl text-center relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-          >
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-xs text-muted-foreground shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Powered by live meteorological data
-            </div>
-          </motion.div>
+      {/* ─── Animated Hero ──────────────────────────────────────────────── */}
+      <AnimatedHero />
 
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
-          >
-            Weather intelligence
-            <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600">
-              your team can act on.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground"
-          >
-            Ask any weather question in plain language. Get real-time conditions,
-            forecasts, and alerts for any location — all in one clean interface.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
-          >
-            <button
-              onClick={handleGetStarted}
-              className="inline-flex h-12 items-center gap-2.5 rounded-full gradient-primary px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30"
-            >
-              Start using Weather Chat
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <span className="text-xs text-muted-foreground">No credit card required</span>
-          </motion.div>
-
-          {/* Sample query cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-            className="mx-auto mt-16 grid max-w-lg grid-cols-1 gap-3 sm:grid-cols-3"
-          >
-            {[
-              { text: "Weather in Mumbai", icon: Thermometer, color: "text-orange-500" },
-              { text: "Forecast for Tokyo", icon: CloudRain, color: "text-blue-500" },
-              { text: "Is it raining in London?", icon: MapPin, color: "text-emerald-500" },
-            ].map((query) => (
-              <div
-                key={query.text}
-                className="rounded-xl border border-border/50 bg-white/80 backdrop-blur-sm px-4 py-3 text-left text-xs text-muted-foreground shadow-sm card-hover"
-              >
-                <query.icon className={`h-4 w-4 ${query.color} mb-2`} />
-                {query.text}
-              </div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ─── Stats Bar ───────────────────────────────────────────────────── */}
-      <section className="border-y border-border/50 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5">
-        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-px sm:grid-cols-4">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="flex flex-col items-center py-8">
-              <stat.icon className="h-5 w-5 text-primary/60 mb-2" />
-              <span className="text-2xl font-semibold tracking-tight text-primary">{stat.value}</span>
-              <span className="mt-1 text-xs text-muted-foreground">{stat.label}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ─── Animated Stats ────────────────────────────────────────────── */}
+      <AnimatedStats />
 
       {/* ─── Features ────────────────────────────────────────────────────── */}
       <section className="py-24">

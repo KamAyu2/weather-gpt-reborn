@@ -5,6 +5,7 @@ import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw, Sprout, AlertT
 import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
+import { ThermalMap } from "@/components/weather/ThermalMap";
 import type { WeatherData } from "@/convex/weather";
 
 interface DashboardHomeProps {
@@ -172,6 +173,16 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               </p>
             </button>
           )}
+        </motion.div>
+
+        {/* ─── Thermal Map ────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.12 }}
+          className="mt-10"
+        >
+          <ThermalMap />
         </motion.div>
 
         {/* Quick Actions */}

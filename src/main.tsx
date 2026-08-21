@@ -4,7 +4,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
-import React, { StrictMode, useEffect, lazy, Suspense } from "react";
+import React, { StrictMode, useEffect, lazy, Suspense, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
@@ -24,6 +24,34 @@ function RouteLoading() {
       <div className="animate-pulse text-muted-foreground">Loading...</div>
     </div>
   );
+}
+
+// Import splash screen
+const SplashScreen = lazy(() => import("@/components/ui/SplashScreen").then(m => ({ default: m.SplashScreen })));
+
+function AppWithSplash({ children }: { children: React.ReactNode }) {
+  const [showSplash, setShowSplash] = useState(() => {
+    // Only show splash on first visit per session
+    if (typeof window !== "undefined") {
+      return !sessionStorage.getItem("weather-chat-loaded");
+    }
+    return true;
+  });
+
+  const handleSplashComplete = () => {
+    sessionStorage.setItem("weather-chat-loaded", "true");
+    setShowSplash(false);
+  };
+
+  if (showSplash) {
+    return (
+      <Suspense fallback={null}>
+        <SplashScreen onComplete={handleSplashComplete} />
+      </Suspense>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 /** Silent error boundary — if VlyToolbar crashes it renders nothing instead of
@@ -120,22 +148,24 @@ createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <RouteSyncer />
           <Suspense fallback={<RouteLoading />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route
-                path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RequireAuth>
-                    <Dashboard />
-                  </RequireAuth>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppWithSplash>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route
+                  path="/auth"
+                  element={<AuthPage redirectAfterAuth="/dashboard" />}
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <RequireAuth>
+                      <Dashboard />
+                    </RequireAuth>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppWithSplash>
           </Suspense>
         </BrowserRouter>
         <Toaster />
