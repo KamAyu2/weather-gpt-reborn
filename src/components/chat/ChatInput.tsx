@@ -8,6 +8,7 @@ interface ChatInputProps {
   isLoading: boolean;
   disabled?: boolean;
   placeholder?: string;
+  voiceInput?: React.ReactNode;
 }
 
 export function ChatInput({
@@ -17,6 +18,7 @@ export function ChatInput({
   isLoading,
   disabled,
   placeholder = "Ask about the weather…",
+  voiceInput,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -39,7 +41,8 @@ export function ChatInput({
   return (
     <div className="border-t border-border/50 bg-gradient-to-t from-background to-background/80 backdrop-blur-xl">
       <div className="mx-auto max-w-3xl px-4 py-4">
-        <div className="flex items-end gap-2 rounded-2xl border border-border/60 bg-white/80 shadow-sm px-4 py-3 transition-colors focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/10">
+        <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-white/80 shadow-sm px-4 py-3 transition-colors focus-within:border-primary/50 focus-within:shadow-md focus-within:shadow-primary/10">
+          {voiceInput}
           <textarea
             ref={textareaRef}
             value={value}

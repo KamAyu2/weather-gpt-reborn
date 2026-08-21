@@ -167,6 +167,47 @@ function generateConversationalGreeting(data: import("./weather").WeatherData, u
   return intro;
 }
 
+function generateAgriAdvisory(data: import("./weather").WeatherData): string {
+  const { current, daily } = data;
+  const today = daily[0];
+  let text = `\n\n🌾 **Agriculture Advisory:**\n`;
+  
+  // Temperature-based advice
+  if (current.temperature >= 35) {
+    text += `• Heat stress risk for crops — ensure adequate irrigation\n`;
+    text += `• Best time for field work is early morning or late evening\n`;
+  } else if (current.temperature <= 10) {
+    text += `• Frost risk for sensitive crops — consider protective measures\n`;
+    text += `• Delay planting until temperatures rise\n`;
+  } else {
+    text += `• Good conditions for most agricultural activities\n`;
+  }
+  
+  // Rain-based advice
+  if (today && today.precipitationProbabilityMax > 50) {
+    text += `• Delay pesticide/fertilizer application — rain expected\n`;
+    text += `• Good time for rain-fed crop irrigation\n`;
+  } else if (today && today.precipitationProbabilityMax < 20) {
+    text += `• Dry conditions — ensure adequate irrigation for crops\n`;
+  }
+  
+  // Wind-based advice
+  if (current.windSpeed > 25) {
+    text += `• Strong winds — avoid spraying operations\n`;
+    text += `• Secure greenhouses and protective structures\n`;
+  }
+  
+  // Humidity-based advice
+  if (current.humidity > 80) {
+    text += `• High humidity — watch for fungal diseases in crops\n`;
+    text += `• Ensure proper ventilation in storage areas\n`;
+  } else if (current.humidity < 30) {
+    text += `• Low humidity — increase irrigation frequency\n`;
+  }
+  
+  return text;
+}
+
 function generateCurrentResponse(
   data: import("./weather").WeatherData,
   userQuery: string
@@ -235,6 +276,12 @@ function generateCurrentResponse(
     text += `\n⚠️ **Severe weather alert:** Thunderstorm activity in the area. Seek shelter indoors immediately.`;
   }
 
+  // Add agriculture advisory if user mentions farming/agriculture
+  const query = userQuery.toLowerCase();
+  if (query.includes("farm") || query.includes("crop") || query.includes("agri") || query.includes("soil") || query.includes("irrigation") || query.includes("harvest")) {
+    text += generateAgriAdvisory(data);
+  }
+
   return {
     text,
     metadata: {
@@ -247,7 +294,7 @@ function generateCurrentResponse(
   };
 }
 
-function generateForecastResponse(data: import("./weather").WeatherData): { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } } {
+function generateForecastResponse(data: import("./weather").WeatherData, userQuery: string): { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } } {
   const { location, daily } = data;
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
@@ -296,6 +343,12 @@ function generateForecastResponse(data: import("./weather").WeatherData): { text
     text += `❄️ **Week outlook:** Cold week ahead — dress warm and watch for possible frost.`;
   } else {
     text += `🌤️ **Week outlook:** Pretty pleasant conditions overall — great week to be outdoors!`;
+  }
+
+  // Add agriculture advisory if user mentions farming/agriculture
+  const query = userQuery.toLowerCase();
+  if (query.includes("farm") || query.includes("crop") || query.includes("agri") || query.includes("soil") || query.includes("irrigation") || query.includes("harvest")) {
+    text += generateAgriAdvisory(data);
   }
 
   return {
@@ -620,7 +673,7 @@ export const processMessage = action({
       let response: { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } };
 
       if (parsed.intent === "forecast") {
-        response = generateForecastResponse(weatherData);
+        response = generateForecastResponse(weatherData, content);
       } else {
         response = generateCurrentResponse(weatherData, content);
       }

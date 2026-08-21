@@ -21,6 +21,7 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { VoiceInput } from "@/components/chat/VoiceInput";
 import { DashboardHome } from "@/components/dashboard/DashboardHome";
 import { Id } from "@/convex/_generated/dataModel";
 
@@ -462,6 +463,7 @@ export default function Dashboard() {
             onChange={setInput}
             onSubmit={() => handleSend()}
             isLoading={isLoading}
+            voiceInput={<VoiceInput onResult={(text) => { setInput(text); setTimeout(() => handleSend(text), 50); }} />}
           />
         )}
       </div>
