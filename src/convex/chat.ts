@@ -308,6 +308,19 @@ export const createConversation = mutation({
   },
 });
 
+export const toggleStar = mutation({
+  args: {
+    messageId: v.id("messages"),
+  },
+  handler: async (ctx, args) => {
+    const msg = await ctx.db.get(args.messageId);
+    if (!msg) throw new Error("Message not found");
+    await ctx.db.patch(args.messageId, {
+      starred: !msg.starred,
+    });
+  },
+});
+
 // ─── Chat query ─────────────────────────────────────────────────────────────
 
 export const getConversations = query({
@@ -333,6 +346,33 @@ export const getMessages = query({
       )
       .order("asc")
       .collect();
+  },
+});
+
+export const getStarredMessages = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = (await ctx.auth.getUserIdentity())?.subject;
+    if (!userId) return [];
+
+    const userConversations = await ctx.db
+      .query("conversations")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const convIds = new Set(userConversations.map((c) => c._id));
+
+    const starred = await ctx.db
+      .query("messages")
+      .withIndex("by_starred", (q) => q.eq("starred", true))
+      .order("desc")
+      .take(50);
+
+    return starred
+      .filter((m) => convIds.has(m.conversationId))
+      .map((m) => {
+        const conv = userConversations.find((c) => c._id === m.conversationId);
+        return { ...m, conversationTitle: conv?.title ?? "Conversation" };
+      });
   },
 });
 

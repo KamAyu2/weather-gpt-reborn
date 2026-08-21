@@ -38,6 +38,7 @@ const schema = defineSchema(
       role: v.union(v.literal("user"), v.literal("assistant")),
       content: v.string(),
       timestamp: v.number(),
+      starred: v.optional(v.boolean()),
       metadata: v.optional(
         v.object({
           location: v.optional(v.string()),
@@ -47,7 +48,8 @@ const schema = defineSchema(
           weatherData: v.optional(v.any()),
         })
       ),
-    }).index("by_conversation", ["conversationId", "timestamp"]),
+    }).index("by_conversation", ["conversationId", "timestamp"])
+      .index("by_starred", ["starred"]),
   },
   {
     schemaValidation: false,

@@ -1,10 +1,13 @@
 import { motion } from "framer-motion";
-import { Cloud, User } from "lucide-react";
+import { Cloud, Star, User } from "lucide-react";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
   timestamp?: number;
+  starred?: boolean;
+  messageId?: string;
+  onToggleStar?: (messageId: string) => void;
 }
 
 function formatTime(timestamp?: number): string {
@@ -21,7 +24,6 @@ function parseMarkdown(text: string): React.ReactNode[] {
   let key = 0;
 
   for (const line of lines) {
-    // Bold text
     const parts: React.ReactNode[] = [];
     const boldRegex = /\*\*(.*?)\*\*/g;
     let lastIndex = 0;
@@ -46,7 +48,6 @@ function parseMarkdown(text: string): React.ReactNode[] {
       parts.push(line);
     }
 
-    // Handle list items
     if (line.startsWith("• ") || line.startsWith("- ")) {
       elements.push(
         <div key={`line-${key++}`} className="flex gap-2 py-0.5">
@@ -67,7 +68,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
   return elements;
 }
 
-export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
+export function ChatMessage({ role, content, timestamp, starred, messageId, onToggleStar }: ChatMessageProps) {
   const isUser = role === "user";
 
   return (
@@ -75,7 +76,7 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+      className={`group flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
     >
       {!isUser && (
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted mt-0.5">
@@ -93,15 +94,30 @@ export function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
         <div className="whitespace-pre-wrap break-words">
           {isUser ? content : parseMarkdown(content)}
         </div>
-        {timestamp && (
-          <div
-            className={`mt-1.5 text-[10px] ${
-              isUser ? "text-background/50" : "text-muted-foreground/50"
-            }`}
-          >
-            {formatTime(timestamp)}
-          </div>
-        )}
+        <div className={`mt-1.5 flex items-center gap-2 ${isUser ? "justify-end" : "justify-between"}`}>
+          {timestamp && (
+            <span
+              className={`text-[10px] ${
+                isUser ? "text-background/50" : "text-muted-foreground/50"
+              }`}
+            >
+              {formatTime(timestamp)}
+            </span>
+          )}
+          {!isUser && messageId && onToggleStar && (
+            <button
+              onClick={() => onToggleStar(messageId)}
+              className={`ml-auto rounded-md p-1 transition-colors ${
+                starred
+                  ? "text-amber-500 hover:text-amber-600"
+                  : "text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-muted-foreground/60"
+              }`}
+              title={starred ? "Remove from saved" : "Save this message"}
+            >
+              <Star className={`h-3 w-3 ${starred ? "fill-current" : ""}`} />
+            </button>
+          )}
+        </div>
       </div>
 
       {isUser && (

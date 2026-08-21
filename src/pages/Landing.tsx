@@ -1,37 +1,37 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe } from "lucide-react";
+import { ArrowRight, Cloud, CloudRain, Wind, Thermometer, MapPin, Globe, Star } from "lucide-react";
 import { useNavigate } from "react-router";
 
 const FEATURES = [
   {
     icon: Cloud,
-    title: "Real-time Weather",
-    description: "Current conditions with temperature, humidity, wind, and UV data updated live from global weather stations.",
+    title: "Real-Time Conditions",
+    description: "Current temperature, humidity, wind speed, UV index, and atmospheric pressure — updated continuously from global weather stations.",
   },
   {
     icon: CloudRain,
     title: "7-Day Forecasts",
-    description: "Detailed weekly outlooks with precipitation probability, daily ranges, and severe weather alerts.",
+    description: "Daily breakdowns with precipitation probability, temperature ranges, and wind forecasts to plan with confidence.",
   },
   {
     icon: MapPin,
-    title: "Location Intelligence",
-    description: "Ask about any city worldwide. Natural language understanding lets you ask in your own words.",
+    title: "Location Search",
+    description: "Ask about any city or region worldwide. Type naturally and get precise results for the location you need.",
   },
   {
     icon: Wind,
     title: "Weather Alerts",
-    description: "Automatic warnings for extreme conditions — heat waves, storms, high UV, and strong winds.",
+    description: "Automatic warnings when conditions become extreme — heat advisories, storms, high UV, and dangerous winds.",
   },
   {
-    icon: Thermometer,
-    title: "Climate Insights",
-    description: "Understand temperature trends, humidity patterns, and seasonal forecasts at a glance.",
+    icon: Star,
+    title: "Saved Insights",
+    description: "Star important weather responses to keep them in your personal dashboard for quick reference and planning.",
   },
   {
     icon: Globe,
     title: "Global Coverage",
-    description: "Weather data for every city on Earth. From Mumbai to New York, we've got you covered.",
+    description: "Meteorological data for every region on Earth. From local conditions to international forecasts.",
   },
 ];
 
@@ -39,7 +39,7 @@ const STATS = [
   { value: "200K+", label: "Locations" },
   { value: "7-Day", label: "Forecasts" },
   { value: "Real-time", label: "Updates" },
-  { value: "Free", label: "Always" },
+  { value: "24/7", label: "Available" },
 ];
 
 export default function Landing() {
@@ -63,7 +63,7 @@ export default function Landing() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground">
               <Cloud className="h-4 w-4 text-background" />
             </div>
-            <span className="text-sm font-semibold tracking-tight">WeatherGPT</span>
+            <span className="text-sm font-semibold tracking-tight">Weather Chat</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -97,9 +97,9 @@ export default function Landing() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="text-4xl font-semibold tracking-tight sm:text-5xl md:text-6xl"
           >
-            Weather intelligence,
+            Weather intelligence
             <br />
-            <span className="text-muted-foreground">in plain language.</span>
+            <span className="text-muted-foreground">your team can act on.</span>
           </motion.h1>
 
           <motion.p
@@ -108,9 +108,8 @@ export default function Landing() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-muted-foreground"
           >
-            Ask any weather question in natural language. Get real-time conditions,
-            forecasts, and alerts for any location on Earth — powered by live
-            meteorological data.
+            Ask any weather question in plain language. Get real-time conditions,
+            forecasts, and alerts for any location — all in one clean interface.
           </motion.p>
 
           <motion.div
@@ -123,10 +122,10 @@ export default function Landing() {
               onClick={handleGetStarted}
               className="inline-flex h-11 items-center gap-2.5 rounded-full bg-foreground px-6 text-sm font-medium text-background transition-all hover:opacity-90"
             >
-              Start asking questions
+              Start using Weather Chat
               <ArrowRight className="h-4 w-4" />
             </button>
-            <span className="text-xs text-muted-foreground">No account needed</span>
+            <span className="text-xs text-muted-foreground">No credit card required</span>
           </motion.div>
 
           {/* Sample query cards */}
@@ -170,11 +169,11 @@ export default function Landing() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-xl text-center">
             <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              Everything you need to know
+              Built for teams that need answers
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              From current conditions to weekly forecasts — ask naturally and get
-              precise, actionable weather intelligence.
+              From daily operations to long-range planning — get precise weather
+              data when and where you need it.
             </p>
           </div>
 
@@ -205,17 +204,17 @@ export default function Landing() {
       <section className="border-t border-border/50 py-24">
         <div className="mx-auto max-w-2xl px-6 text-center">
           <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Ready to check the weather?
+            Ready to get started?
           </h2>
           <p className="mt-3 text-sm text-muted-foreground">
-            Ask about any city. Get instant, accurate weather data.
+            Ask about any location and receive instant, accurate weather data.
           </p>
           <div className="mt-8">
             <button
               onClick={handleGetStarted}
               className="inline-flex h-11 items-center gap-2.5 rounded-full bg-foreground px-6 text-sm font-medium text-background transition-all hover:opacity-90"
             >
-              Try WeatherGPT
+              Open Weather Chat
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
@@ -227,7 +226,7 @@ export default function Landing() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <Cloud className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">WeatherGPT</span>
+            <span className="text-xs text-muted-foreground">Weather Chat</span>
           </div>
           <span className="text-xs text-muted-foreground">
             Weather data by Open-Meteo
