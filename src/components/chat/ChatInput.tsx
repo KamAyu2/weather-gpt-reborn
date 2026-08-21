@@ -1,0 +1,71 @@
+import { ArrowUp, Loader2 } from "lucide-react";
+import { useRef, useEffect } from "react";
+
+interface ChatInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  isLoading: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+export function ChatInput({
+  value,
+  onChange,
+  onSubmit,
+  isLoading,
+  disabled,
+  placeholder = "Ask about the weather…",
+}: ChatInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    }
+  }, [value]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey && !isLoading && value.trim()) {
+      e.preventDefault();
+      onSubmit();
+    }
+  };
+
+  return (
+    <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto max-w-3xl px-4 py-4">
+        <div className="flex items-end gap-2 rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 transition-colors focus-within:border-border">
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled || isLoading}
+            rows={1}
+            className="max-h-40 min-h-[24px] flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <button
+            onClick={onSubmit}
+            disabled={disabled || isLoading || !value.trim()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-background transition-all hover:opacity-90 disabled:opacity-20 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <ArrowUp className="h-3.5 w-3.5" strokeWidth={2.5} />
+            )}
+          </button>
+        </div>
+        <p className="mt-2 text-center text-[10px] text-muted-foreground/40">
+          Weather data by Open-Meteo · Not for aviation or safety-critical use
+        </p>
+      </div>
+    </div>
+  );
+}
