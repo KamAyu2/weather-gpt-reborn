@@ -148,13 +148,42 @@ function getTempLabel(temp: number): string {
   return "Extreme Heat";
 }
 
-function getRadius(temp: number, isMobile: boolean): number {
-  const base = isMobile ? 10 : 14;
-  if (temp <= 10) return base;
-  if (temp <= 20) return base + 2;
-  if (temp <= 30) return base + 4;
-  if (temp <= 35) return base + 6;
-  return base + 8;
+// Build a layered thermal-spot divIcon: soft halo + warning ring (hot) +
+// glossy core + floating glass temperature chip — Windy-style rendering.
+function buildSpotIcon(L: any, city: CityWeather, isMobile: boolean) {
+  const c = getTemperatureColor(city.temp);
+  const t = Math.min(Math.max((city.temp - 5) / 40, 0), 1);
+  const size = Math.round((isMobile ? 46 : 64) + t * 22);
+  const hot = city.temp >= 36;
+  const veryHot = city.temp >= 41;
+  const html = `
+    <div class="thermal-wrap" style="--ts:${size}px; --tc:${c}; --th:${c}66; --tm:${c}33; --td:${c}cc; --tb:${c}88;">
+      <span class="thermal-halo"></span>
+      ${hot ? `<span class="thermal-ring${veryHot ? " thermal-ring-strong" : ""}"></span>` : ""}
+      <span class="thermal-core"></span>
+      <span class="thermal-label">${Math.round(city.temp)}°</span>
+    </div>`;
+  return L.divIcon({
+    html,
+    className: "thermal-marker",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function buildUserIcon(L: any) {
+  const html = `
+    <div class="user-loc-wrap">
+      <span class="user-ping"></span>
+      <span class="user-ping-delay"></span>
+      <span class="user-dot"></span>
+    </div>`;
+  return L.divIcon({
+    html,
+    className: "thermal-marker",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
 }
 
 function MapView({ cityData, isMobile, onCitySelect, userLocation, mapStyle }: {
@@ -164,17 +193,24 @@ function MapView({ cityData, isMobile, onCitySelect, userLocation, mapStyle }: {
   userLocation: { lat: number; lon: number } | null;
   mapStyle: "dark" | "light";
 }) {
-  const [RL, setRL] = useState<any>(null);
-  const [mapReady, setMapReady] = useState(false);
+  const [mods, setMods] = useState<{ rl: any; L: any } | null>(null);
 
   useEffect(() => {
-    import("react-leaflet").then((mod) => {
-      setRL(mod);
-      setTimeout(() => setMapReady(true), 100);
+    let alive = true;
+    Promise.all([import("react-leaflet"), import("leaflet")]).then(([rl, L]) => {
+      if (alive) {
+        setMods({ rl, L });
+        setTimeout(() => {
+          if (alive) setMods((m) => (m ? { ...m } : m));
+        }, 100);
+      }
     });
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  if (!RL || !mapReady) {
+  if (!mods || !mods.rl) {
     return (
       <div className="h-64 sm:h-80 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center rounded-xl">
         <div className="text-center">
@@ -185,7 +221,31 @@ function MapView({ cityData, isMobile, onCitySelect, userLocation, mapStyle }: {
     );
   }
 
-  const { MapContainer, TileLayer, CircleMarker, Popup, useMap } = RL;
+  const { MapContainer, TileLayer, Marker, Popup, useMap } = mods.rl;
+  const leaflet = mods.L;
+
+  // Custom glass zoom controls (top-right inside map)
+  function ZoomControls() {
+    const map = useMap();
+    return (
+      <div className="absolute right-2 top-2 z-[500] flex flex-col gap-1.5">
+        <button
+          onClick={() => map.zoomIn()}
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/70 hover:text-white"
+          title="Zoom in"
+        >
+          <ZoomIn className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => map.zoomOut()}
+          className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-sm transition-colors hover:bg-black/70 hover:text-white"
+          title="Zoom out"
+        >
+          <ZoomOut className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  }
   const center: [number, number] = userLocation
     ? [userLocation.lat, userLocation.lon]
     : [20.5937, 78.9629];
@@ -228,35 +288,35 @@ function MapView({ cityData, isMobile, onCitySelect, userLocation, mapStyle }: {
       style={{ background: mapStyle === "dark" ? "#0f172a" : "#f0f9ff" }}
     >
       <MapEvents />
+      <ZoomControls />
       <TileLayer url={tileUrl} />
-      {userLocation && (
-        <CircleMarker
-          center={[userLocation.lat, userLocation.lon]}
-          radius={8}
-          fillColor="#3b82f6"
-          color="#ffffff"
-          weight={3}
-          opacity={1}
-          fillOpacity={0.9}
-        >
-          <Popup>
-            <div className="text-center p-1 min-w-[120px] font-sans">
-              <p className="font-bold text-sm">📍 Your Location</p>
-              <p className="text-[10px] text-gray-500 mt-1">Lat: {userLocation.lat.toFixed(4)}, Lon: {userLocation.lon.toFixed(4)}</p>
-            </div>
-          </Popup>
-        </CircleMarker>
-      )}
-      {cityData.map((city) => (
-        <CircleMarker
+      {userLocation && (() => {
+        const userCity = cityData.find((c) => c.name.startsWith("📍")) ?? null;
+        return (
+          <Marker position={[userLocation.lat, userLocation.lon]} icon={buildUserIcon(leaflet)} zIndexOffset={900}>
+            <Popup>
+              <div className="text-center p-1 min-w-[140px] font-sans">
+                <p className="font-bold text-sm">📍 Your Location</p>
+                {userCity ? (
+                  <>
+                    <p className="text-[10px] text-gray-500">{getWeatherEmoji(userCity.weatherCode)} {getWeatherDescription(userCity.weatherCode)}</p>
+                    <p className="text-3xl font-bold mt-1" style={{ color: getTemperatureColor(userCity.temp) }}>
+                      {Math.round(userCity.temp)}°C
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-gray-500 mt-1">Lat: {userLocation.lat.toFixed(4)}, Lon: {userLocation.lon.toFixed(4)}</p>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })()}
+      {cityData.filter((c) => !c.name.startsWith("📍")).map((city) => (
+        <Marker
           key={`${city.name}-${city.lat}-${city.lon}`}
-          center={[city.lat, city.lon]}
-          radius={getRadius(city.temp, isMobile)}
-          fillColor={getTemperatureColor(city.temp)}
-          color={city.name === "📍 Your Location" ? "#3b82f6" : "#ffffff"}
-          weight={city.name === "📍 Your Location" ? 3 : 2}
-          opacity={0.9}
-          fillOpacity={0.85}
+          position={[city.lat, city.lon]}
+          icon={buildSpotIcon(leaflet, city, isMobile)}
           eventHandlers={{ click: () => onCitySelect(city) }}
         >
           <Popup>

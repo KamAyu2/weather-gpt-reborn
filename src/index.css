@@ -428,3 +428,156 @@ html {
 .leaflet-control {
   z-index: 5 !important;
 }
+
+/* ─── High-end thermal spot display ───────────────────────────────────── */
+/* Layered heat blobs: soft halo + glossy core + glass temp chip (Windy-style) */
+.thermal-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.thermal-wrap {
+  position: relative;
+  width: var(--ts);
+  height: var(--ts);
+  display: grid;
+  place-items: center;
+  animation: thermal-in 0.45s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+@keyframes thermal-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Soft outer heat field — blends with neighbouring spots like thermal imaging */
+.thermal-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--th) 0%, var(--tm) 45%, transparent 74%);
+  pointer-events: none;
+}
+
+/* Bright glossy core — mimics a thermal camera hot spot with inner highlight */
+.thermal-core {
+  width: 34%;
+  height: 34%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 32% 30%,
+    rgba(255, 255, 255, 0.95) 0%,
+    var(--tc) 46%,
+    var(--td) 100%
+  );
+  box-shadow:
+    0 0 calc(var(--ts) * 0.22) var(--tm),
+    inset 0 0 3px rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+}
+
+/* Expanding warning ring for hot / extreme locations */
+.thermal-ring {
+  position: absolute;
+  width: 52%;
+  height: 52%;
+  border-radius: 9999px;
+  border: 2px solid var(--tc);
+  opacity: 0.85;
+  animation: thermal-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  pointer-events: none;
+}
+
+.thermal-ring-strong {
+  width: 70%;
+  height: 70%;
+  animation-duration: 1.4s;
+  border-width: 3px;
+}
+
+@keyframes thermal-pulse {
+  0% {
+    transform: scale(0.75);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(2.05);
+    opacity: 0;
+  }
+}
+
+/* Floating glass temperature chip */
+.thermal-label {
+  position: absolute;
+  left: 50%;
+  bottom: 2%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(10, 15, 26, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid var(--tb);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ─── User location marker with radar ping ────────────────────────────── */
+.user-loc-wrap {
+  position: relative;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+}
+
+.user-ping,
+.user-ping-delay {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.25);
+  animation: user-ping 2s ease-out infinite;
+  pointer-events: none;
+}
+
+.user-ping-delay {
+  animation-delay: 1s;
+}
+
+.user-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 32% 30%, #dbeafe 0%, #3b82f6 55%, #1d4ed8 100%);
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 12px rgba(59, 130, 246, 0.9),
+    0 1px 4px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+@keyframes user-ping {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
