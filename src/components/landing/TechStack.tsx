@@ -50,23 +50,23 @@ const TECH_STACK = [
 
 export function TechStack() {
   return (
-    <section className="py-24 bg-gradient-to-b from-muted/20 to-background">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="mx-auto max-w-xl text-center mb-16">
+    <section className="py-20 sm:py-28 bg-gradient-to-b from-muted/20 to-background">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6">
+        <div className="mx-auto max-w-xl text-center mb-12 sm:mb-16">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-xs text-muted-foreground shadow-sm mb-6">
-              <Lock className="h-3 w-3" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-sm text-muted-foreground shadow-sm mb-6">
+              <Lock className="h-3.5 w-3.5" />
               Built with Modern Stack
             </span>
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">
               Technical Architecture
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-muted-foreground">
               Designed for scalability, performance, and real-time weather intelligence delivery.
             </p>
           </motion.div>
@@ -80,21 +80,21 @@ export function TechStack() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.1 }}
-              className="rounded-2xl border border-border/50 bg-white/80 backdrop-blur-sm p-6 shadow-sm"
+              className="rounded-2xl border border-border/50 bg-white/80 backdrop-blur-sm p-6 sm:p-8 shadow-sm"
             >
               <div className="flex items-center gap-3 mb-5">
                 <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${stack.color}`}>
                   <stack.icon className="h-5 w-5 text-white" />
                 </div>
-                <h3 className="text-sm font-semibold">{stack.category}</h3>
+                <h3 className="text-base sm:text-lg font-semibold">{stack.category}</h3>
               </div>
               <div className="space-y-3">
                 {stack.items.map((item) => (
                   <div key={item.name} className="flex items-start gap-3">
-                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
+                    <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
                     <div>
-                      <p className="text-xs font-medium">{item.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                      <p className="text-sm sm:text-base font-medium">{item.name}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">{item.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -109,9 +109,9 @@ export function TechStack() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="mt-12 rounded-2xl border border-border/50 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-8"
+          className="mt-12 rounded-2xl border border-border/50 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 p-6 sm:p-8"
         >
-          <h3 className="text-sm font-semibold text-center mb-6">Key Differentiators for India</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-center mb-6">Key Differentiators for India</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[
               { icon: Smartphone, title: "Mobile-First", desc: "Responsive design optimized for smartphones used by 750M+ Indian mobile internet users" },
@@ -119,12 +119,12 @@ export function TechStack() {
               { icon: Database, title: "Free & Open", desc: "No API keys required for weather data. Google Gemini AI for advanced conversations." },
             ].map((item) => (
               <div key={item.title} className="flex items-start gap-3 rounded-xl bg-white/60 p-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <item.icon className="h-4 w-4 text-primary" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <item.icon className="h-4.5 w-4.5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium">{item.title}</p>
-                  <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">{item.desc}</p>
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="mt-0.5 text-xs sm:text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
                 </div>
               </div>
             ))}

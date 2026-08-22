@@ -49,7 +49,7 @@ function TypingDemo() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center">
-              <span className="text-xs sm:text-sm text-foreground/80 truncate">
+              <span className="text-sm sm:text-base text-foreground/80 truncate">
                 {TYPING_TEXTS[textIndex].slice(0, isMobile ? Math.min(charIndex, 35) : charIndex)}
               </span>
               <motion.span
@@ -156,7 +156,7 @@ export function AnimatedHero() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="mb-6 sm:mb-8"
         >
-          <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs text-muted-foreground shadow-sm">
+          <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-muted-foreground shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
             <Sparkles className="h-3 w-3 text-amber-500" />
             <span className="hidden sm:inline">Powered by AI & Real-time Meteorological Data</span>
@@ -183,7 +183,7 @@ export function AnimatedHero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-4 sm:mt-6 text-sm sm:text-base leading-relaxed text-muted-foreground max-w-xl mx-auto"
+          className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-muted-foreground max-w-xl mx-auto"
         >
           Ask any weather question in plain language. Get real-time conditions,
           forecasts, agriculture advisories, and disaster alerts.
@@ -209,13 +209,12 @@ export function AnimatedHero() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => window.location.href = "/auth?returnTo=/dashboard"}
-            className="inline-flex h-11 sm:h-12 items-center gap-2 sm:gap-2.5 rounded-full gradient-primary px-5 sm:px-6 text-sm font-medium text-white transition-all shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
+            onClick={() => window.location.href = "/auth?returnTo=/dashboard"}              className="inline-flex h-12 sm:h-13 items-center gap-2.5 rounded-full gradient-primary px-6 sm:px-8 text-base sm:text-lg font-medium text-white transition-all shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
           >
             Start using Weather GPT
             <ArrowRight className="h-4 w-4" />
           </motion.button>
-          <span className="text-xs text-muted-foreground">No credit card required</span>
+          <span className="text-sm text-muted-foreground">No credit card required</span>
         </motion.div>
 
         {/* Feature pills */}
@@ -231,7 +230,7 @@ export function AnimatedHero() {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 1.2 + i * 0.1 }}
-              className="rounded-full border border-border/50 bg-white/80 backdrop-blur-sm px-2.5 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-xs text-muted-foreground shadow-sm"
+              className="rounded-full border border-border/50 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-muted-foreground shadow-sm"
             >
               {feature}
             </motion.span>

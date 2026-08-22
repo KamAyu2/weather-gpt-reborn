@@ -45,16 +45,38 @@ export function LiveDemo() {
   const [visibleMessages, setVisibleMessages] = useState<Message[]>([]);
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const hasStartedRef = useRef(false);
+
+  // Only start the demo when the section scrolls into view
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasStartedRef.current) {
+          hasStartedRef.current = true;
+          // Kick off the demo after a short delay
+          setTimeout(() => {
+            setIsPlaying(true);
+          }, 800);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
-    if (!isPlaying) return;
-    if (currentIndex >= DEMO_MESSAGES.length) return;
+    if (!isPlaying || currentIndex >= DEMO_MESSAGES.length) return;
 
     const timer = setTimeout(() => {
       setVisibleMessages(prev => [...prev, DEMO_MESSAGES[currentIndex]]);
       setCurrentIndex(prev => prev + 1);
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Do NOT call scrollIntoView — it fights with user scrolling
     }, currentIndex === 0 ? 500 : DEMO_MESSAGES[currentIndex].delay - (currentIndex > 0 ? DEMO_MESSAGES[currentIndex - 1].delay : 0));
 
     return () => clearTimeout(timer);
@@ -64,26 +86,27 @@ export function LiveDemo() {
     setVisibleMessages([]);
     setCurrentIndex(0);
     setIsPlaying(true);
+    hasStartedRef.current = true;
   };
 
   return (
-    <section className="py-24 bg-gradient-to-b from-background via-muted/20 to-background">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="mx-auto max-w-xl text-center mb-12">
+    <section ref={sectionRef} className="py-20 sm:py-28 bg-gradient-to-b from-background via-muted/20 to-background">
+      <div className="mx-auto max-w-6xl px-5 sm:px-6">
+        <div className="mx-auto max-w-xl text-center mb-12 sm:mb-16">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4 }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-xs text-muted-foreground shadow-sm mb-6">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-4 py-1.5 text-sm text-muted-foreground shadow-sm mb-6">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live Demo
             </span>
-            <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">
               See it in action
             </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-muted-foreground">
               Watch how Weather GPT responds to real questions about weather, agriculture, and disaster alerts.
             </p>
           </motion.div>
@@ -105,8 +128,8 @@ export function LiveDemo() {
                   <Cloud className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium">Weather GPT</p>
-                  <p className="text-[10px] text-emerald-500 flex items-center gap-1">
+                  <p className="text-sm font-medium">Weather GPT</p>
+                  <p className="text-xs text-emerald-500 flex items-center gap-1">
                     <span className="h-1 w-1 rounded-full bg-emerald-500" />
                     Online
                   </p>
@@ -115,14 +138,14 @@ export function LiveDemo() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="rounded-lg border border-border/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/50 transition-colors flex items-center gap-1"
+                  className="rounded-lg border border-border/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors flex items-center gap-1"
                 >
                   {isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                   {isPlaying ? "Pause" : "Play"}
                 </button>
                 <button
                   onClick={reset}
-                  className="rounded-lg border border-border/50 px-3 py-1.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                  className="rounded-lg border border-border/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
                 >
                   Reset
                 </button>
@@ -130,7 +153,7 @@ export function LiveDemo() {
             </div>
 
             {/* Messages */}
-            <div className="h-96 overflow-y-auto p-5 space-y-4">
+            <div className="h-80 sm:h-96 overflow-y-auto p-4 sm:p-5 space-y-4">
               <AnimatePresence>
                 {visibleMessages.map((msg, i) => (
                   <motion.div
@@ -150,7 +173,7 @@ export function LiveDemo() {
                         ? "bg-gradient-to-br from-primary to-primary/90 text-white rounded-br-md shadow-sm"
                         : "bg-muted/50 text-foreground rounded-bl-md"
                     }`}>
-                      <div className="whitespace-pre-wrap break-words text-xs">
+                      <div className="whitespace-pre-wrap break-words text-sm">
                         {msg.content}
                       </div>
                     </div>
@@ -182,17 +205,15 @@ export function LiveDemo() {
                   </div>
                 </motion.div>
               )}
-
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Footer */}
             <div className="border-t border-border/50 px-5 py-3">
               <div className="flex items-center gap-2 rounded-xl bg-muted/30 px-4 py-2.5">
-                <span className="text-xs text-muted-foreground/50 flex-1">Try it yourself →</span>
+                <span className="text-sm text-muted-foreground/50 flex-1">Try it yourself →</span>
                 <button
                   onClick={() => window.location.href = "/auth?returnTo=/dashboard"}
-                  className="rounded-lg gradient-primary px-3 py-1 text-[10px] font-medium text-white flex items-center gap-1"
+                  className="rounded-lg gradient-primary px-3 py-1 text-xs font-medium text-white flex items-center gap-1"
                 >
                   Get Started <ArrowRight className="h-3 w-3" />
                 </button>

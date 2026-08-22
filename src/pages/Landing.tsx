@@ -95,7 +95,7 @@ export default function Landing() {
             <div className="flex h-7 sm:h-8 w-7 sm:w-8 items-center justify-center rounded-lg gradient-primary">
               <Cloud className="h-3.5 sm:h-4 w-3.5 sm:w-4 text-white" />
             </div>
-            <span className="text-xs sm:text-sm font-semibold tracking-tight">Weather GPT</span>
+            <span className="text-sm sm:text-base font-semibold tracking-tight">Weather GPT</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <button
@@ -107,7 +107,7 @@ export default function Landing() {
             </button>
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-full gradient-primary px-3 sm:px-4 text-[11px] sm:text-xs font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/25"
+              className="inline-flex h-8 sm:h-9 items-center gap-1.5 sm:gap-2 rounded-full gradient-primary px-3 sm:px-4 text-xs sm:text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/25"
             >
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
@@ -126,10 +126,10 @@ export default function Landing() {
       <section className="py-16 sm:py-24">
         <div className="mx-auto max-w-6xl px-5 sm:px-6">
           <div className="mx-auto max-w-xl text-center">
-            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight sm:text-3xl">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">
               Built for teams that need answers
             </h2>
-            <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 sm:mt-4 text-base sm:text-lg leading-relaxed text-muted-foreground">
               From daily operations to long-range planning — get precise weather
               data when and where you need it.
             </p>
@@ -148,8 +148,8 @@ export default function Landing() {
                 <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${feature.color}`}>
                   <feature.icon className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="text-sm font-semibold">{feature.title}</h3>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                <h3 className="text-base font-semibold">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {feature.description}
                 </p>
               </motion.div>
@@ -167,16 +167,16 @@ export default function Landing() {
       {/* ─── CTA ─────────────────────────────────────────────────────────── */}
       <section className="border-t border-border/50 py-16 sm:py-24 bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="mx-auto max-w-2xl px-5 sm:px-6 text-center">
-          <h2 className="text-xl sm:text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">
             Ready to get started?
           </h2>
-          <p className="mt-2 sm:mt-3 text-xs sm:text-sm text-muted-foreground">
+          <p className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground">
             Ask about any location and receive instant, accurate weather data.
           </p>
           <div className="mt-6 sm:mt-8">
             <button
               onClick={handleGetStarted}
-              className="inline-flex h-11 sm:h-12 items-center gap-2 sm:gap-2.5 rounded-full gradient-primary px-5 sm:px-6 text-sm font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
+              className="inline-flex h-12 sm:h-13 items-center gap-2.5 rounded-full gradient-primary px-6 sm:px-8 text-base sm:text-lg font-medium text-white transition-all hover:opacity-90 shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
             >
               Open Weather GPT
               <ArrowRight className="h-4 w-4" />
@@ -193,8 +193,7 @@ export default function Landing() {
               <Cloud className="h-3 w-3 text-white" />
             </div>
             <span className="text-xs font-medium">Weather GPT</span>
-          </div>
-          <span className="text-[10px] sm:text-xs text-muted-foreground">
+          </div>            <span className="text-xs sm:text-sm text-muted-foreground">
             Weather data by Open-Meteo
           </span>
         </div>

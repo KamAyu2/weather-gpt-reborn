@@ -82,7 +82,7 @@ export function AnimatedStats() {
               <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 <AnimatedCounter target={stat.value} suffix={stat.suffix} />
               </span>
-              <span className="mt-1 text-[10px] text-muted-foreground leading-tight">{stat.label}</span>
+              <span className="mt-1 text-xs sm:text-sm text-muted-foreground leading-tight">{stat.label}</span>
             </motion.div>
           ))}
         </div>
