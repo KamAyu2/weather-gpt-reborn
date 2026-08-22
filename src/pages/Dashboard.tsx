@@ -153,12 +153,22 @@ export default function Dashboard() {
     <div className="flex h-screen bg-background overflow-hidden">
       {/* ─── Sidebar ──────────────────────────────────────────────────── */}
       <AnimatePresence mode="wait">
+        {sidebarOpen && isMobile && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         {sidebarOpen && (
           <motion.aside
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 260, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }} className={`flex h-full flex-col border-r border-border/50 bg-muted/20 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl" : ""}`}
+            transition={{ duration: 0.2 }} className={`flex h-full flex-col border-r border-border/50 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl bg-background w-72" : "bg-muted/20"}`}
           >
             {/* Logo */}
             <div className="flex h-14 items-center justify-between border-b border-border/50 px-4">
