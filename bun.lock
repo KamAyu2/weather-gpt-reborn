@@ -37,7 +37,7 @@
         "@radix-ui/react-tooltip": "^1.2.8",
         "@tailwindcss/vite": "^4.1.17",
         "@types/leaflet": "^1.9.22",
-        "@vly-ai/integrations": "^0.6.12",
+        "@vly-ai/integrations": "^0.6.13",
         "@zumer/snapdom": "^2.0.1",
         "axios": "^1.13.2",
         "class-variance-authority": "^0.7.1",
@@ -511,7 +511,7 @@
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@5.2.0", "", { "dependencies": { "@babel/core": "^7.29.0", "@babel/plugin-transform-react-jsx-self": "^7.27.1", "@babel/plugin-transform-react-jsx-source": "^7.27.1", "@rolldown/pluginutils": "1.0.0-rc.3", "@types/babel__core": "^7.20.5", "react-refresh": "^0.18.0" }, "peerDependencies": { "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0" } }, "sha512-YmKkfhOAi3wsB1PhJq5Scj3GXMn3WvtQ/JC0xoopuHoXSdmtdStOpFrYaT1kie2YgFBcIe64ROzMYRjCrYOdYw=="],
 
-    "@vly-ai/integrations": ["@vly-ai/integrations@0.6.12", "", { "dependencies": { "@ai-sdk/openai-compatible": "^1.0.0", "ai": "^5.0.0", "html2canvas": "^1.4.1", "zod": "^3.22.4" } }, "sha512-8iXWxFczNTzW/1u7AounN/V/adz5x1O9OFbJAm5y0c2ITDOda756bhdhue/mj7ya/BDhCArDJeiSfNdrkvlr8A=="],
+    "@vly-ai/integrations": ["@vly-ai/integrations@0.6.13", "", { "dependencies": { "@ai-sdk/openai-compatible": "^1.0.0", "ai": "^5.0.0", "html2canvas": "^1.4.1", "zod": "^3.22.4" } }, "sha512-++CaYtkJKT1Qa+SwSONZ/5MM2gWLPEWPnZsDTKV/idKkdIL0aKjVIpQGkQSUDm6T5B1B8DiIAW5y5LKm1zDdqg=="],
 
     "@zumer/snapdom": ["@zumer/snapdom@2.12.9", "", {}, "sha512-Zufl1vEthT931kcZfmAaRSnucAGIRLGi9N6JI8ZsdyHww5hHHLk4t5LU1DxS5pNAPi1MptPHcGON1pkXEBf5iw=="],
 
