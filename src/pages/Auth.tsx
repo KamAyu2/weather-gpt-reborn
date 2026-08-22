@@ -79,11 +79,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      navigate(redirect);
-    }
-  }, [authLoading, isAuthenticated, navigate, redirect]);
+  // Don't auto-redirect on load — user may have signed out intentionally.
+  // Only redirect after an explicit sign-in action below.
 
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
