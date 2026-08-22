@@ -50,6 +50,24 @@ html {
   /* Fix map touch interference */
   .leaflet-container {
     touch-action: pan-x pan-y;
+    isolation: isolate;
+  }
+
+  /* Constrain Leaflet panes below sidebar z-50 */
+  .leaflet-pane {
+    z-index: 1 !important;
+  }
+  .leaflet-overlay-pane {
+    z-index: 2 !important;
+  }
+  .leaflet-marker-pane {
+    z-index: 3 !important;
+  }
+  .leaflet-popup-pane {
+    z-index: 10 !important;
+  }
+  .leaflet-control {
+    z-index: 5 !important;
   }
 
   /* Mobile input fix - prevent zoom on focus */
@@ -387,4 +405,26 @@ html {
 .animate-orb-delay {
   animation: orb-float 15s ease-in-out infinite;
   animation-delay: -5s;
+}
+
+/* ─── Leaflet z-index fix (all screens) ────────────────────────────────── */
+/* Leaflet panes default to z-index 400-800 which breaks above the
+   sidebar (z-50). Constrain everything inside an isolate context. */
+.leaflet-container {
+  isolation: isolate;
+}
+.leaflet-pane {
+  z-index: 1 !important;
+}
+.leaflet-overlay-pane {
+  z-index: 2 !important;
+}
+.leaflet-marker-pane {
+  z-index: 3 !important;
+}
+.leaflet-popup-pane {
+  z-index: 10 !important;
+}
+.leaflet-control {
+  z-index: 5 !important;
 }
