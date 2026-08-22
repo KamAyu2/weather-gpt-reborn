@@ -42,10 +42,10 @@ function TypingDemo() {
 
   return (
     <div className="relative">
-      <div className="rounded-xl border border-border/60 bg-white/90 dark:bg-background/80 backdrop-blur-sm px-3 sm:px-5 py-2.5 sm:py-3 shadow-lg shadow-black/5">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg gradient-primary shrink-0">
-            <Cloud className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+      <div className="rounded-2xl border border-border/40 glass px-4 sm:px-5 py-3 sm:py-3.5 shadow-xl shadow-black/5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl gradient-primary shrink-0 shadow-lg shadow-primary/20">
+            <Cloud className="h-4 w-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center">
@@ -55,7 +55,7 @@ function TypingDemo() {
               <motion.span
                 animate={{ opacity: [1, 0] }}
                 transition={{ duration: 0.5, repeat: Infinity }}
-                className="inline-block w-0.5 h-3.5 sm:h-4 bg-primary ml-0.5 shrink-0"
+                className="inline-block w-0.5 h-4 bg-primary ml-0.5 shrink-0"
               />
             </div>
           </div>
@@ -65,100 +65,72 @@ function TypingDemo() {
   );
 }
 
-function FloatingIcon({ icon: Icon, color, delay, x, y }: {
-  icon: React.ElementType;
+function FloatingOrb({ color, size, x, y, delay, duration }: {
   color: string;
-  delay: number;
+  size: number;
   x: number;
   y: number;
+  delay: number;
+  duration: number;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0 }}
+      initial={{ opacity: 0, scale: 0.5 }}
       animate={{
-        opacity: [0, 0.5, 0.5, 0],
-        scale: [0, 1, 1, 0.8],
-        y: [0, -15, -30, -50],
-        x: [0, x * 0.3, x * 0.6, x],
+        opacity: [0, 0.6, 0.4, 0.6, 0],
+        scale: [0.5, 1, 1.1, 0.9, 0.5],
+        x: [0, x * 0.4, x * 0.7, x * 0.3, 0],
+        y: [0, y * 0.3, y * 0.6, y * 0.4, 0],
       }}
       transition={{
-        duration: 5,
+        duration,
         repeat: Infinity,
         delay,
         ease: "easeInOut",
       }}
-      className={`absolute hidden sm:block ${color}`}
-      style={{ left: `${50 + x}%`, top: `${55 + y}%` }}
-    >
-      <Icon className="h-4 sm:h-5 w-4 sm:w-5" />
-    </motion.div>
+      className="absolute rounded-full blur-3xl"
+      style={{
+        background: color,
+        width: size,
+        height: size,
+        left: `${50 + x}%`,
+        top: `${40 + y}%`,
+        transform: "translate(-50%, -50%)",
+      }}
+    />
   );
 }
 
 export function AnimatedHero() {
   return (
     <div className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0">
-        <motion.div
-          animate={{
-            background: [
-              "radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 50%)",
-              "radial-gradient(ellipse at 80% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%)",
-              "radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.06) 0%, transparent 50%)",
-              "radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 50%)",
-            ],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute inset-0"
-        />
-      </div>
-
-      {/* Floating particles - desktop only */}
+      {/* 3D Gradient orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={i}
-            initial={{ opacity: 0 }}
-            animate={{
-              opacity: [0, 0.25, 0],
-              y: [0, -80],
-              x: [0, Math.sin(i) * 25],
-            }}
-            transition={{
-              duration: 7 + Math.random() * 3,
-              repeat: Infinity,
-              delay: i * 0.6,
-              ease: "easeInOut",
-            }}
-            className="absolute w-1 h-1 rounded-full bg-primary/30"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${30 + Math.random() * 60}%`,
-            }}
-          />
-        ))}
+        <FloatingOrb color="oklch(0.55 0.18 250 / 0.08)" size={500} x={-20} y={-10} delay={0} duration={14} />
+        <FloatingOrb color="oklch(0.65 0.20 300 / 0.06)" size={400} x={25} y={5} delay={3} duration={18} />
+        <FloatingOrb color="oklch(0.70 0.15 200 / 0.05)" size={350} x={-10} y={15} delay={6} duration={16} />
       </div>
 
-      {/* Floating weather icons - desktop only */}
-      <div className="absolute inset-0 pointer-events-none">
-        <FloatingIcon icon={Cloud} color="text-blue-400/40" delay={0} x={-18} y={0} />
-        <FloatingIcon icon={MapPin} color="text-emerald-400/40" delay={1.5} x={18} y={-8} />
-        <FloatingIcon icon={Zap} color="text-amber-400/40" delay={3} x={-12} y={5} />
-        <FloatingIcon icon={Globe} color="text-violet-400/40" delay={4.5} x={12} y={-3} />
-      </div>
+      {/* Subtle grid overlay for depth */}
+      <div
+        className="absolute inset-0 pointer-events-none opacity-[0.02] dark:opacity-[0.04]"
+        style={{
+          backgroundImage: `linear-gradient(oklch(0.145 0.01 260 / 0.3) 1px, transparent 1px), linear-gradient(90deg, oklch(0.145 0.01 260 / 0.3) 1px, transparent 1px)`,
+          backgroundSize: "60px 60px",
+        }}
+      />
 
       <div className="relative z-10 text-center px-5 sm:px-6 max-w-4xl mx-auto">
         {/* Badge */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="mb-6 sm:mb-8"
+          initial={{ opacity: 0, y: 30, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.2, ease: [0.23, 1, 0.32, 1] }}
+          className="mb-8 sm:mb-10"
         >
-          <span className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-border/60 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-muted-foreground shadow-sm">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <Sparkles className="h-3 w-3 text-amber-500" />
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/40 glass px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base text-muted-foreground shadow-lg shadow-black/5 animate-glow-ring">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <Sparkles className="h-4 w-4 text-amber-500" />
             <span className="hidden sm:inline">Powered by AI & Real-time Meteorological Data</span>
             <span className="sm:hidden">AI-Powered Weather</span>
           </span>
@@ -166,24 +138,24 @@ export function AnimatedHero() {
 
         {/* Headline */}
         <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-          className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight leading-tight"
+          initial={{ opacity: 0, y: 40, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 1, delay: 0.35, ease: [0.23, 1, 0.32, 1] }}
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]"
         >
           Weather intelligence
           <br />
-          <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-violet-600 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-violet-600 bg-clip-text text-transparent gradient-text-animated">
             your team can act on.
           </span>
         </motion.h1>
 
         {/* Subheadline */}
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-4 sm:mt-6 text-base sm:text-lg leading-relaxed text-muted-foreground max-w-xl mx-auto"
+          transition={{ duration: 0.8, delay: 0.55, ease: [0.23, 1, 0.32, 1] }}
+          className="mt-6 sm:mt-8 text-lg sm:text-xl leading-relaxed text-muted-foreground max-w-2xl mx-auto"
         >
           Ask any weather question in plain language. Get real-time conditions,
           forecasts, agriculture advisories, and disaster alerts.
@@ -191,28 +163,29 @@ export function AnimatedHero() {
 
         {/* Typing demo */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-6 sm:mt-8 max-w-md mx-auto"
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.75, ease: [0.23, 1, 0.32, 1] }}
+          className="mt-8 sm:mt-10 max-w-lg mx-auto"
         >
           <TypingDemo />
         </motion.div>
 
         {/* CTA buttons */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.9 }}
-          className="mt-6 sm:mt-8 flex flex-col items-center gap-3 sm:gap-4 sm:flex-row sm:justify-center"
+          transition={{ duration: 0.8, delay: 0.95, ease: [0.23, 1, 0.32, 1] }}
+          className="mt-8 sm:mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center"
         >
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => window.location.href = "/auth?returnTo=/dashboard"}              className="inline-flex h-12 sm:h-13 items-center gap-2.5 rounded-full gradient-primary px-6 sm:px-8 text-base sm:text-lg font-medium text-white transition-all shadow-lg shadow-primary/30 w-full sm:w-auto justify-center"
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => window.location.href = "/auth?returnTo=/dashboard"}
+            className="inline-flex h-13 sm:h-14 items-center gap-3 rounded-full gradient-primary px-8 sm:px-10 text-base sm:text-lg font-semibold text-white transition-all shadow-xl shadow-primary/30 w-full sm:w-auto justify-center magnetic-btn"
           >
             Start using Weather GPT
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-5 w-5" />
           </motion.button>
           <span className="text-sm text-muted-foreground">No credit card required</span>
         </motion.div>
@@ -221,22 +194,42 @@ export function AnimatedHero() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.1 }}
-          className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
+          transition={{ duration: 0.7, delay: 1.15, ease: [0.23, 1, 0.32, 1] }}
+          className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3"
         >
           {["🎤 Voice Input", "🌍 10 Languages", "🌾 Agriculture", "⚠️ Disaster Alerts"].map((feature, i) => (
             <motion.span
               key={feature}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 1.2 + i * 0.1 }}
-              className="rounded-full border border-border/50 bg-white/80 backdrop-blur-sm px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-muted-foreground shadow-sm"
+              initial={{ opacity: 0, scale: 0.7, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: 1.3 + i * 0.1, duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+              className="rounded-full border border-border/40 glass px-4 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base text-muted-foreground shadow-md"
             >
               {feature}
             </motion.span>
           ))}
         </motion.div>
       </div>
+
+      {/* Scroll indicator */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2, duration: 1 }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2"
+      >
+        <motion.div
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-6 h-10 rounded-full border-2 border-border/40 flex justify-center pt-2"
+        >
+          <motion.div
+            animate={{ opacity: [0.3, 1, 0.3], height: [4, 8, 4] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="w-1 rounded-full bg-primary/50"
+          />
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
