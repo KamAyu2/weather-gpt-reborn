@@ -25,35 +25,43 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState("Mumbai");
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
+  const [hasAttemptedLocation, setHasAttemptedLocation] = useState(false);
 
-  // Auto-request geolocation on mount
+  // Auto-request geolocation once on mount
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    setLocationStatus("requesting");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const loc = { lat: position.coords.latitude, lon: position.coords.longitude };
-        setUserLocation(loc);
-        setLocationStatus("granted");
-      },
-      () => {
-        setLocationStatus("denied");
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
-    );
-  }, []);
+    if (!navigator.geolocation || hasAttemptedLocation) return;
+    setHasAttemptedLocation(true);
+
+    // Check permission first
+    const checkAndRequest = async () => {
+      try {
+        if (navigator.permissions) {
+          const result = await navigator.permissions.query({ name: "geolocation" });
+          if (result.state === "denied") return; // Already denied, don't prompt
+        }
+      } catch { /* proceed */ }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
+        },
+        () => { /* Silently fail — user can use city buttons */ },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      );
+    };
+    checkAndRequest();
+  }, [hasAttemptedLocation]);
 
   // Load weather by coordinates (for user's location)
   const loadWeatherByCoords = useCallback(async (lat: number, lon: number) => {
     setWeatherLoading(true);
     setWeatherLocation("My Location");
     try {
-      // Reverse geocode to get place name
-      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`;
       let placeName = "Your Location";
       try {
-        const res = await fetch(nominatimUrl, { headers: { "User-Agent": "WeatherGPT/1.0" } });
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`, {
+          headers: { "User-Agent": "WeatherGPT/1.0" },
+        });
         if (res.ok) {
           const data = await res.json();
           placeName = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "Your Location";
@@ -61,11 +69,8 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
       } catch { /* use default */ }
 
       const data = await fetchWeather({
-        latitude: lat,
-        longitude: lon,
-        locationName: placeName,
-        country: "India",
-        timezone: "auto",
+        latitude: lat, longitude: lon,
+        locationName: placeName, country: "India", timezone: "auto",
       });
       setWeatherData(data);
     } catch (err) {
@@ -90,11 +95,8 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
       if (results && results.length > 0) {
         const best = results[0];
         const data = await fetchWeather({
-          latitude: best.latitude,
-          longitude: best.longitude,
-          locationName: best.name,
-          country: best.country,
-          timezone: best.timezone || "auto",
+          latitude: best.latitude, longitude: best.longitude,
+          locationName: best.name, country: best.country, timezone: best.timezone || "auto",
         });
         setWeatherData(data);
       }

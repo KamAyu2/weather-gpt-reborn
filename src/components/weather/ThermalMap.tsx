@@ -248,7 +248,9 @@ export function ThermalMap() {
   const [showCityList, setShowCityList] = useState(false);
   const [sortBy, setSortBy] = useState<"temp" | "name">("temp");
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "granted" | "denied" | "error">("idle");
+  // "unsupported" = no geolocation API, "denied-permanent" = user denied and won't re-prompt
+  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "granted" | "denied-permanent" | "unsupported">("idle");
+  const [hasAttempted, setHasAttempted] = useState(false);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640);
@@ -257,9 +259,59 @@ export function ThermalMap() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  // Check permission state first, then attempt geolocation
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setLocationStatus("unsupported");
+      return;
+    }
+
+    // Check if permission was already denied
+    const checkAndRequest = async () => {
+      try {
+        if (navigator.permissions) {
+          const result = await navigator.permissions.query({ name: "geolocation" });
+          if (result.state === "denied") {
+            setLocationStatus("denied-permanent");
+            setHasAttempted(true);
+            return;
+          }
+        }
+      } catch {
+        // permissions API not supported, proceed with request
+      }
+
+      // Only auto-request once
+      if (hasAttempted) return;
+      setHasAttempted(true);
+      setLocationStatus("requesting");
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
+          setLocationStatus("granted");
+        },
+        (error) => {
+          // Code 1 = PERMISSION_DENIED (user blocked it)
+          // Code 2 = POSITION_UNAVAILABLE
+          // Code 3 = TIMEOUT
+          if (error.code === 1) {
+            setLocationStatus("denied-permanent");
+          } else {
+            // Timeout or unavailable — don't block the UI
+            setLocationStatus("idle");
+          }
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      );
+    };
+
+    checkAndRequest();
+  }, [hasAttempted]);
+
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationStatus("error");
+      setLocationStatus("unsupported");
       return;
     }
     setLocationStatus("requesting");
@@ -268,16 +320,16 @@ export function ThermalMap() {
         setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
         setLocationStatus("granted");
       },
-      () => {
-        setLocationStatus("denied");
+      (error) => {
+        if (error.code === 1) {
+          setLocationStatus("denied-permanent");
+        } else {
+          setLocationStatus("idle");
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
     );
   }, []);
-
-  useEffect(() => {
-    requestLocation();
-  }, [requestLocation]);
 
   const fetchAllWeather = useCallback(async () => {
     setLoading(true);
@@ -305,9 +357,7 @@ export function ThermalMap() {
           const r = results[j];
           if (r?.current) {
             allResults.push({
-              name: city.name,
-              lat: city.lat,
-              lon: city.lon,
+              name: city.name, lat: city.lat, lon: city.lon,
               temp: r.current.temperature_2m ?? 28,
               humidity: r.current.relative_humidity_2m ?? 55,
               windSpeed: r.current.wind_speed_10m ?? 10,
@@ -360,7 +410,7 @@ export function ThermalMap() {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {!userLocation && locationStatus !== "requesting" && (
+          {locationStatus === "idle" && !userLocation && (
             <button onClick={requestLocation} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted/50 transition-colors" title="Enable location">
               <Navigation className="h-3.5 w-3.5" />
             </button>
@@ -397,12 +447,22 @@ export function ThermalMap() {
             </div>
           </div>
         )}
-        {locationStatus === "denied" && (
+        {/* Only show "Enable" banner if permission is idle (not permanently denied) */}
+        {locationStatus === "idle" && !userLocation && !hasAttempted && (
           <div className="absolute top-2 left-2 right-2 z-[1000]">
             <div className="flex items-center gap-2 rounded-lg bg-white/90 dark:bg-background/90 backdrop-blur-sm border border-border/50 px-3 py-2 shadow-lg">
               <Navigation className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
               <p className="text-[11px] text-muted-foreground flex-1">Enable location to see weather near you</p>
               <button onClick={requestLocation} className="rounded-md bg-primary px-2 py-1 text-[10px] font-medium text-white shrink-0">Enable</button>
+            </div>
+          </div>
+        )}
+        {/* Show helpful message if permanently denied */}
+        {locationStatus === "denied-permanent" && (
+          <div className="absolute top-2 left-2 right-2 z-[1000]">
+            <div className="flex items-center gap-2 rounded-lg bg-white/90 dark:bg-background/90 backdrop-blur-sm border border-border/50 px-3 py-2 shadow-lg">
+              <Navigation className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-[11px] text-muted-foreground flex-1">Location blocked. Enable it in your browser settings to see weather near you.</p>
             </div>
           </div>
         )}
