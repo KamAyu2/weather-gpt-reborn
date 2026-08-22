@@ -11,20 +11,112 @@ interface GeocodingResult {
   country: string;
   country_code: string;
   admin1?: string;
+  admin2?: string;
   timezone: string;
+  population?: number;
+  elevation?: number;
+  feature_code?: string;
 }
 
 export const geocodeLocation = action({
   args: { query: v.string() },
   handler: async (_ctx, args) => {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.query)}&count=5&language=en&format=json`;
+    // Strategy 1: Direct geocoding
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.query)}&count=10&language=en&format=json`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Geocoding request failed");
     const data = await res.json();
-    if (!data.results || data.results.length === 0) {
-      throw new Error(`Location "${args.query}" not found. Please try a different city or place name.`);
+    
+    if (data.results && data.results.length > 0) {
+      return data.results as GeocodingResult[];
     }
-    return data.results as GeocodingResult[];
+
+    // Strategy 2: Try with "India" appended for small locations
+    const indiaUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(args.query + " India")}&count=10&language=en&format=json`;
+    const indiaRes = await fetch(indiaUrl);
+    if (indiaRes.ok) {
+      const indiaData = await indiaRes.json();
+      if (indiaData.results && indiaData.results.length > 0) {
+        return indiaData.results as GeocodingResult[];
+      }
+    }
+
+    // Strategy 3: Try partial match
+    const words = args.query.split(/\s+/);
+    if (words.length > 1) {
+      const partialUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(words[0])}&count=10&language=en&format=json`;
+      const partialRes = await fetch(partialUrl);
+      if (partialRes.ok) {
+        const partialData = await partialRes.json();
+        if (partialData.results && partialData.results.length > 0) {
+          return partialData.results as GeocodingResult[];
+        }
+      }
+    }
+
+    throw new Error(`Location "${args.query}" not found. Please try a different city or place name.`);
+  },
+});
+
+// ─── Reverse geocoding: coordinates → place name ───────────────────────────
+
+export const reverseGeocode = action({
+  args: {
+    latitude: v.number(),
+    longitude: v.number(),
+  },
+  handler: async (_ctx, args) => {
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search?name=&count=1&language=en&format=json&latitude=${args.latitude}&longitude=${args.longitude}`;
+      // Open-Meteo doesn't have reverse geocoding, use Nominatim
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${args.latitude}&lon=${args.longitude}&format=json&zoom=10`;
+      const res = await fetch(nominatimUrl, {
+        headers: { "User-Agent": "WeatherGPT/1.0" },
+      });
+      if (!res.ok) {
+        return { name: "Your Location", country: "India" };
+      }
+      const data = await res.json();
+      const address = data.address || {};
+      const city = address.city || address.town || address.village || address.county || address.state || "Your Location";
+      const country = address.country || "India";
+      return { name: city, country };
+    } catch {
+      return { name: "Your Location", country: "India" };
+    }
+  },
+});
+
+// ─── Find nearby locations ─────────────────────────────────────────────────
+
+export const findNearbyLocations = action({
+  args: {
+    latitude: v.number(),
+    longitude: v.number(),
+    radiusKm: v.optional(v.number()),
+  },
+  handler: async (_ctx, args) => {
+    const radius = args.radiusKm || 100;
+    // Generate a grid of points around the user's location
+    const offsets = [
+      { lat: 0, lon: 0, label: "Your location" },
+      { lat: 0.5, lon: 0, label: "North" },
+      { lat: -0.5, lon: 0, label: "South" },
+      { lat: 0, lon: 0.5, label: "East" },
+      { lat: 0, lon: -0.5, label: "West" },
+      { lat: 0.35, lon: 0.35, label: "Northeast" },
+      { lat: -0.35, lon: -0.35, label: "Southwest" },
+      { lat: 0.35, lon: -0.35, label: "Northwest" },
+      { lat: -0.35, lon: 0.35, label: "Southeast" },
+    ];
+
+    const results = offsets.map(offset => ({
+      latitude: args.latitude + offset.lat,
+      longitude: args.longitude + offset.lon,
+      label: offset.label,
+    }));
+
+    return results;
   },
 });
 

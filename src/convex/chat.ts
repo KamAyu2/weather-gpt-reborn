@@ -66,30 +66,123 @@ function getUVLevel(uv: number): string {
 interface ParsedQuery {
   location: string | null;
   intent: "current" | "forecast" | "comparison" | "general";
-  dateRange?: number; // days ahead for forecast
+  dateRange?: number;
+  isWeatherQuery: boolean;
+  isGeneralQuery: boolean;
 }
 
-const LOCATIONS = [
+// Extensive Indian locations — cities, towns, villages, landmarks
+const INDIAN_LOCATIONS = [
+  // Major cities
   "Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata", "Hyderabad", "Pune", "Ahmedabad",
   "Jaipur", "Lucknow", "Kanpur", "Nagpur", "Indore", "Thane", "Bhopal", "Visakhapatnam",
   "Patna", "Vadodara", "Ghaziabad", "Ludhiana", "Agra", "Nashik", "Faridabad", "Meerut",
   "Rajkot", "Varanasi", "Srinagar", "Aurangabad", "Dhanbad", "Amritsar", "Allahabad",
   "Ranchi", "Howrah", "Coimbatore", "Jabalpur", "Gwalior", "Vijayawada", "Jodhpur",
   "Madurai", "Raipur", "Kochi", "Chandigarh", "Thiruvananthapuram", "Dehradun",
+  // Tier 2 cities
+  "Mysore", "Udaipur", "Shimla", "Manali", "Goa", "Pondicherry", "Ooty", "Kodaikanal",
+  "Mount Abu", "Darjeeling", "Gangtok", "Shillong", "Imphal", "Aizawl", "Kohima",
+  "Itanagar", "Agartala", "Panaji", "Dispur", "Bhubaneswar", "Cuttack", "Rourkela",
+  "Siliguri", "Durgapur", "Asansol", "Bilaspur", "Jammu", "Leh", "Ladakh", "Dwarka",
+  "Haridwar", "Rishikesh", "Pushkar", "Ajmer", "Jaisalmer", "Jalore", "Bundi",
+  "Chittorgarh", "Kota", "Alwar", "Bikaner", "Sikar", "Nagaur", "Barmer",
+  "Mathura", "Vrindavan", "Ayodhya", "Prayagraj", "Bodhgaya", "Sarnath", "Kushinagar",
+  "Hampi", "Badami", "Bijapur", "Gulbarga", "Belgaum", "Hubli", "Dharwad", "Mangalore",
+  "Manipal", "Udupi", "Karwar", "Gokarna", "Hospet", "Bellary", "Tumkur",
+  "Erode", "Salem", "Tiruchirappalli", "Tirunelveli", "Thanjavur", "Kanchipuram",
+  "Vellore", "Chidambaram", "Rameswaram", "Kanyakumari", "Nagercoil",
+  "Warangal", "Karimnagar", "Nizamabad", "Khammam", "Mahbubnagar", "Adilabad",
+  "Guntur", "Nellore", "Kurnool", "Anantapur", "Kadapa", "Tirupati",
+  // Small towns and villages
+  "Cherrapunji", "Mawsynram", "Tawang", "Ziro", "Dirang", "Bomdila",
+  "Kalpa", "Sangla", "Reckong Peo", "Uttarkashi", "Gangotri", "Kedarnath",
+  "Badrinath", "Hemkund", "Valley of Flowers", "Nainital", "Mussoorie",
+  "Almora", "Chamoli", "Pithoragarh", "Bageshwar", "Champawat", "Udham Singh Nagar",
+  "Pithauragarh", "Munsiari", "Chakulia", "Jhargram", "Bankura", "Purulia",
+  "Medinipur", "Birbhum", "Malda", "Murshidabad", "Nadia", "South 24 Parganas",
+  "North 24 Parganas", "Burdwan", "Hooghly", "Barrackpur", "Kamarhati",
+  "Dindigul", "Theni", "Dharapuram", "Pollachi", "Udumalpet", "Palakkad",
+  "Thrissur", "Kottayam", "Alappuzha", "Kollam", "Pathanamthitta", "Idukki",
+  "Wayanad", "Kannur", "Kasargod", "Malappuram", "Guruvayur",
+  // Tourist/pilgrimage sites
+  "Amer Fort", "Hawa Mahal", "City Palace Jaipur", "Gateway of India", "Marine Drive",
+  "Victoria Memorial", "Howrah Bridge", "India Gate", "Red Fort", "Taj Mahal",
+  "Qutub Minar", "Charminar", "Meenakshi Temple", "Golden Temple",
+  // International (kept for global queries)
   "New York", "London", "Tokyo", "Paris", "Sydney", "Dubai", "Singapore", "Berlin",
   "Toronto", "Los Angeles", "Chicago", "San Francisco", "Washington DC", "Moscow",
-  "Beijing", "Seoul", "Bangkok", "Istanbul", "Cairo", "Nairobi", "Lagos", "Rio de Janeiro",
-  "Buenos Aires", "Mexico City", "Lima", "Bogota", "Santiago", "Johannesburg", "Cape Town",
+  "Beijing", "Seoul", "Bangkok", "Istanbul", "Cairo", "Nairobi", "Lagos",
+  "Rio de Janeiro", "Buenos Aires", "Mexico City", "Lima", "Bogota", "Santiago",
+  "Johannesburg", "Cape Town", "Rome", "Barcelona", "Amsterdam", "Vienna",
+  "Prague", "Zurich", "Geneva", "Stockholm", "Oslo", "Helsinki", "Copenhagen",
+  "Warsaw", "Budapest", "Athens", "Lisbon", "Madrid", "Mumbai", "Delhi",
 ];
+
+// Weather-related keywords
+const WEATHER_KEYWORDS = [
+  "weather", "temperature", "temp", "forecast", "rain", "raining", "rainy", "snow", "snowing",
+  "storm", "thunder", "lightning", "wind", "windy", "humidity", "cloud", "cloudy", "fog",
+  "foggy", "sunny", "sun", "sunshine", "uv", "heat", "cold", "warm", "hot", "freeze",
+  "freezing", "frost", "dew", "precipitation", "barometer", "pressure", "visibility",
+  "sunrise", "sunset", "moonrise", "moonset", "air quality", "aqi", "pollution",
+  "monsoon", "cyclone", "typhoon", "hurricane", "tornado", "flooding", "flood",
+  "drought", "hail", "sleet", "drizzle", "shower", "overcast", "partly cloudy",
+  "clear sky", "mist", "haze", "smog", "thunderstorm", "blizzard",
+  // Hindi weather words
+  "mausam", "tapman", "barish", "garmi", "thandi", "hawa", "dhund", "badal",
+  "chhaon", "dhoop", "toofan", "chakravat", "sukha", "bajrapat",
+];
+
+// General question patterns (non-weather)
+const GENERAL_PATTERNS = [
+  /^(who|what|when|where|why|how|which|can|could|would|should|do|does|did|is|are|was|were|will)\s/i,
+  /^(tell me|explain|describe|define|name|list|give me|show me|help me)/i,
+  /^(joke|funny|laugh|humor|riddle)/i,
+  /^(thank|thanks|thx|please|sorry|hello|hi|hey|bye|goodbye)/i,
+  /^(what's the (meaning|definition|difference|capital|population|currency|language|history))/i,
+  /^(write|create|make|generate|translate|convert|calculate|solve)/i,
+  /^(recommend|suggest|best|top|worst|compare|difference between)/i,
+  /^(programming|code|javascript|python|react|database|api)/i,
+  /^(recipe|cook|food|restaurant|travel|hotel|flight|book)/i,
+  /^(movie|book|music|song|game|sport|cricket|football)/i,
+  /^(history|science|math|geography|biology|physics|chemistry)/i,
+  /^(business|startup|marketing|finance|investment|stock)/i,
+  /^(health|medical|diet|exercise|yoga|mental health)/i,
+];
+
+function isWeatherIntent(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  // Check if any weather keyword is present
+  for (const kw of WEATHER_KEYWORDS) {
+    if (lower.includes(kw)) return true;
+  }
+  // Check if a location is mentioned (weather intent by default if location is present)
+  return false;
+}
+
+function isGeneralIntent(msg: string): boolean {
+  const lower = msg.toLowerCase();
+  for (const pattern of GENERAL_PATTERNS) {
+    if (pattern.test(lower)) return true;
+  }
+  return false;
+}
 
 function parseQuery(userMessage: string): ParsedQuery {
   const msg = userMessage.toLowerCase().trim();
   let location: string | null = null;
   let intent: ParsedQuery["intent"] = "current";
   let dateRange: number | undefined;
+  let isWeatherQuery = false;
+  let isGeneralQuery = false;
+
+  // Check weather keywords
+  isWeatherQuery = isWeatherIntent(msg);
+  isGeneralQuery = isGeneralIntent(msg);
 
   // Strategy 1: Check for known city names in the message (most reliable)
-  for (const city of LOCATIONS) {
+  for (const city of INDIAN_LOCATIONS) {
     if (msg.includes(city.toLowerCase())) {
       location = city;
       break;
@@ -98,12 +191,10 @@ function parseQuery(userMessage: string): ParsedQuery {
 
   // Strategy 2: Look for prepositions and extract the text after them
   if (!location) {
-    const prepositionMatch = /(?:in|at|for|of|near|around)\s+(.+)/i.exec(userMessage);
+    const prepositionMatch = /(?:in|at|for|of|near|around|from|to)\s+(.+)/i.exec(userMessage);
     if (prepositionMatch) {
       let candidate = prepositionMatch[1].trim();
-      // Remove trailing punctuation
       candidate = candidate.replace(/[?.!,;:]+$/, "").trim();
-      // Take at most 4 words (covers multi-word city names like "New York")
       const words = candidate.split(/\s+/).slice(0, 4).join(" ");
       if (words.length >= 2) {
         location = words;
@@ -126,7 +217,12 @@ function parseQuery(userMessage: string): ParsedQuery {
     intent = "current";
   }
 
-  return { location, intent, dateRange };
+  // If we have a location, it's a weather query regardless of keywords
+  if (location) {
+    isWeatherQuery = true;
+  }
+
+  return { location, intent, dateRange, isWeatherQuery, isGeneralQuery };
 }
 
 // ─── Response generation ────────────────────────────────────────────────────
@@ -137,7 +233,6 @@ function generateConversationalGreeting(data: import("./weather").WeatherData, u
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   
-  // Generate a conversational intro based on conditions
   const greetings = [
     `Good ${timeOfDay}! I just checked the weather in ${location.name} for you.`,
     `Here's what's happening in ${location.name} right now!`,
@@ -147,7 +242,6 @@ function generateConversationalGreeting(data: import("./weather").WeatherData, u
   
   let intro = greetings[Math.floor(Math.random() * greetings.length)];
   
-  // Add context based on weather conditions
   if (current.temperature >= 35) {
     intro += ` It's quite hot out there — ${Math.round(current.temperature)}°C and ${condition.toLowerCase()}. You might want to stay hydrated if you're heading out!`;
   } else if (current.temperature <= 10) {
@@ -172,7 +266,6 @@ function generateAgriAdvisory(data: import("./weather").WeatherData): string {
   const today = daily[0];
   let text = `\n\n🌾 **Agriculture Advisory:**\n`;
   
-  // Temperature-based advice
   if (current.temperature >= 35) {
     text += `• Heat stress risk for crops — ensure adequate irrigation\n`;
     text += `• Best time for field work is early morning or late evening\n`;
@@ -183,7 +276,6 @@ function generateAgriAdvisory(data: import("./weather").WeatherData): string {
     text += `• Good conditions for most agricultural activities\n`;
   }
   
-  // Rain-based advice
   if (today && today.precipitationProbabilityMax > 50) {
     text += `• Delay pesticide/fertilizer application — rain expected\n`;
     text += `• Good time for rain-fed crop irrigation\n`;
@@ -191,13 +283,11 @@ function generateAgriAdvisory(data: import("./weather").WeatherData): string {
     text += `• Dry conditions — ensure adequate irrigation for crops\n`;
   }
   
-  // Wind-based advice
   if (current.windSpeed > 25) {
     text += `• Strong winds — avoid spraying operations\n`;
     text += `• Secure greenhouses and protective structures\n`;
   }
   
-  // Humidity-based advice
   if (current.humidity > 80) {
     text += `• High humidity — watch for fungal diseases in crops\n`;
     text += `• Ensure proper ventilation in storage areas\n`;
@@ -218,10 +308,8 @@ function generateCurrentResponse(
   const windDir = getWindDirection(current.windDirection);
   const uvLevel = getUVLevel(current.uvIndex);
 
-  // Build conversational response
   let text = generateConversationalGreeting(data, userQuery);
   
-  // Add key highlights conversationally
   text += `\n\nHere are the details:\n`;
   text += `• **Temperature:** ${current.temperature}°C (feels like ${current.apparentTemperature}°C)\n`;
   text += `• **Conditions:** ${condition}\n`;
@@ -247,7 +335,6 @@ function generateCurrentResponse(
     }
   }
   
-  // Add conversational advice
   text += `\n`;
   if (current.temperature >= 35) {
     text += `💡 **Tip:** Stay hydrated and try to stay in shaded areas during peak hours.`;
@@ -261,7 +348,6 @@ function generateCurrentResponse(
     text += `💡 **Tip:** Great conditions to be outdoors! Enjoy the weather.`;
   }
   
-  // Add alerts for extreme conditions
   if (current.temperature >= 40) {
     text += `\n\n⚠️ **Heat advisory:** Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure.`;
   } else if (current.temperature <= 0) {
@@ -276,7 +362,6 @@ function generateCurrentResponse(
     text += `\n⚠️ **Severe weather alert:** Thunderstorm activity in the area. Seek shelter indoors immediately.`;
   }
 
-  // Add agriculture advisory if user mentions farming/agriculture
   const query = userQuery.toLowerCase();
   if (query.includes("farm") || query.includes("crop") || query.includes("agri") || query.includes("soil") || query.includes("irrigation") || query.includes("harvest")) {
     text += generateAgriAdvisory(data);
@@ -296,10 +381,7 @@ function generateCurrentResponse(
 
 function generateForecastResponse(data: import("./weather").WeatherData, userQuery: string): { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } } {
   const { location, daily } = data;
-  const hour = new Date().getHours();
-  const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   
-  // Conversational intro
   const intros = [
     `Here's what the next week looks like in ${location.name}!`,
     `Let me walk you through the forecast for ${location.name}.`,
@@ -307,7 +389,6 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
   ];
   let text = intros[Math.floor(Math.random() * intros.length)] + "\n\n";
   
-  // Day-by-day with conversational context
   daily.forEach((day, i) => {
     const condition = getWeatherDescription(day.weatherCode);
     const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : formatDate(day.date);
@@ -319,10 +400,8 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
     text += `\n`;
   });
 
-  // Summary insights conversationally
   const maxTemp = Math.max(...daily.map((d) => d.temperatureMax));
   const minTemp = Math.min(...daily.map((d) => d.temperatureMin));
-  const totalRain = daily.reduce((sum, d) => sum + d.precipitationSum, 0);
   const rainyDays = daily.filter((d) => d.precipitationProbabilityMax > 50).length;
   
   text += `\n**Week at a glance:**\n`;
@@ -333,7 +412,6 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
     text += `• Looks like a mostly dry week ahead!\n`;
   }
   
-  // Conversational advice
   text += `\n`;
   if (rainyDays >= 4) {
     text += `☔ **Week outlook:** Quite a wet week ahead — keep that umbrella handy!`;
@@ -345,7 +423,6 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
     text += `🌤️ **Week outlook:** Pretty pleasant conditions overall — great week to be outdoors!`;
   }
 
-  // Add agriculture advisory if user mentions farming/agriculture
   const query = userQuery.toLowerCase();
   if (query.includes("farm") || query.includes("crop") || query.includes("agri") || query.includes("soil") || query.includes("irrigation") || query.includes("harvest")) {
     text += generateAgriAdvisory(data);
@@ -365,13 +442,13 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
 
 function generateErrorResponse(error: string): string {
   if (error.includes("not found")) {
-    return `I couldn't find that location. Could you try:\n\n• A different spelling of the city name\n• A nearby major city\n• Adding the country name (e.g., "Mumbai, India")\n\nI support locations worldwide — just ask about any city or place.`;
+    return `I couldn't find that location. Could you try:\n\n• A different spelling of the city name\n• A nearby major city\n• Adding the state name (e.g., "Warangal, Telangana")\n\nI support **any location in India and worldwide** — from major cities to small villages. Just tell me the place name!`;
   }
   return `I'm sorry, I encountered an issue getting weather data. Please try again in a moment, or try a different location.`;
 }
 
 function generateHelpResponse(): string {
-  return `Here's what I can help you with:\n\n**Current Weather**\n• "What's the weather in Mumbai?"\n• "Temperature in Delhi right now"\n• "Is it raining in London?"\n\n**Forecasts**\n• "7-day forecast for Tokyo"\n• "Will it rain tomorrow in Paris?"\n• "Weather this week in Sydney"\n\n**General**\n• Ask about any city worldwide\n• Get temperature, humidity, wind, UV, and precipitation data\n• Receive severe weather alerts when conditions are extreme\n\nJust type your weather question and I'll provide the latest data.`;
+  return `Here's what I can help you with:\n\n**🌤️ Weather Information**\n• "What's the weather in Mumbai?"\n• "Temperature in my village right now"\n• "Is it raining in London?"\n\n**📅 Forecasts**\n• "7-day forecast for Tokyo"\n• "Will it rain tomorrow in Pune?"\n• "Weather this week in Shimla"\n\n**🌾 Agriculture**\n• "Should I irrigate crops in Nagpur?"\n• "Farming conditions in Punjab"\n• "Best time to sow wheat in UP?"\n\n**⚠️ Alerts**\n• "Any cyclone alerts for Chennai?"\n• "Is it safe to fly tomorrow?"\n• "Heatwave warning in Rajasthan?"\n\n**💬 General Knowledge**\n• Ask me anything — math, science, history, cooking, travel, technology, and more!\n• "Tell me a joke"\n• "What's the capital of France?"\n• "How do I make chai?"\n\n**🗣️ Voice Input**\n• Tap the mic button and speak your question\n\nJust type your question and I'll do my best to help!`;
 }
 
 // ─── LLM Integration ──────────────────────────────────────────────────────
@@ -382,29 +459,41 @@ async function callLLM(userMessage: string): Promise<string> {
     return getFallbackResponse(userMessage);
   }
 
-  const systemPrompt = `You are Weather GPT, an intelligent AI assistant built for weather intelligence and general conversation.
+  const systemPrompt = `You are Weather GPT — an intelligent, friendly AI assistant created by Team Craxzy for the Smart India Hackathon.
 
-Your capabilities:
-- Provide real-time weather conditions for any location worldwide
-- Deliver 7-day forecasts with detailed breakdowns
-- Issue severe weather alerts and warnings
-- Answer questions about climate, meteorology, and geography
-- Have friendly, helpful conversations on any topic
-- Answer general knowledge questions
-- Help with math, science, history, and other educational topics
+YOUR CORE IDENTITY:
+- You are a weather intelligence platform with general knowledge capabilities
+- You were built to serve Indian users across all 28 states and 8 union territories
+- You support 10 Indian languages and are designed for rural accessibility
 
-When users ask about weather:
-- Provide accurate, helpful information
-- Include relevant details like temperature, humidity, wind, UV index
-- Suggest relevant follow-up questions
+WEATHER CAPABILITIES (your primary focus):
+- Real-time weather for ANY location in India (cities, villages, towns, districts)
+- 7-day forecasts with hourly breakdowns
+- Agriculture-specific advisories (irrigation, sowing, harvest, pest alerts)
+- Disaster alerts (cyclones, floods, heatwaves, cold waves, thunderstorms)
+- UV index, air quality, visibility, and atmospheric data
+- Compare weather between multiple cities
 
-When users ask general questions:
-- Be helpful, friendly, and informative
-- Keep responses concise but thorough
-- Maintain a warm, professional tone
-- Use markdown formatting for clarity
+GENERAL KNOWLEDGE CAPABILITIES:
+- Answer ANY question the user asks — science, history, math, geography, technology, cooking, travel, sports, health, business, etc.
+- Be helpful with everyday questions like "how do I make chai?" or "what's the best time to visit Goa?"
+- Explain concepts in simple language, especially for users who may not be tech-savvy
+- Provide practical advice when asked
 
-Always respond in a helpful, conversational tone.`;
+COMMUNICATION STYLE:
+- Always be warm, friendly, and conversational
+- Use simple English that anyone can understand
+- Use emojis naturally to make responses engaging (🌤️ ☀️ 🌧️ ⛈️ ❄️ 💡 🌾 ⚠️)
+- Format responses with markdown for readability (bullet points, bold text)
+- If asked about weather, always provide actionable advice
+- If you don't know something, say so honestly and suggest where they might find the answer
+
+IMPORTANT RULES:
+1. For weather questions — always provide specific, actionable information
+2. For general questions — be as helpful as possible with your knowledge
+3. Never make up weather data — if you don't have real-time data, say so
+4. Be especially helpful for farmers and rural users
+5. If the user seems confused, gently guide them`;
 
   try {
     const response = await fetch(
@@ -415,6 +504,12 @@ Always respond in a helpful, conversational tone.`;
         body: JSON.stringify({
           contents: [{ parts: [{ text: userMessage }] }],
           systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.9,
+            topK: 40,
+            maxOutputTokens: 2048,
+          },
         }),
       }
     );
@@ -434,33 +529,41 @@ function getFallbackResponse(userMessage: string): string {
   const msg = userMessage.toLowerCase().trim();
   
   // Greetings
-  if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|howdy|greetings)/i.test(msg)) {
-    return "Hello! 👋 I'm Weather GPT, your intelligent weather assistant. I can help you with:\n\n• **Weather conditions** for any location\n• **7-day forecasts** with detailed breakdowns\n• **Severe weather alerts** and warnings\n• **Climate information** and trends\n\nJust ask about the weather in any city, or try one of the suggestion chips below!";
+  if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|namaste|namaskar|howdy|greetings)/i.test(msg)) {
+    const greetings = [
+      "Hello! 👋 I'm Weather GPT, your intelligent weather assistant. I can help you with:\n\n• **Weather conditions** for any location in India or worldwide\n• **7-day forecasts** with detailed breakdowns\n• **Agriculture advisories** for farmers\n• **Disaster alerts** — cyclones, floods, heatwaves\n• **General knowledge** — ask me anything!\n\nWhat would you like to know?",
+      "Namaste! 🙏 I'm Weather GPT. Ask me about the weather anywhere — from Mumbai to a small village — or just chat about anything!\n\nTry asking:\n• \"Weather in my city\"\n• \"Should I irrigate crops today?\"\n• \"Tell me a joke\"",
+      "Hey there! ☀️ I'm Weather GPT, built by Team Craxzy. I know the weather for every location and can answer almost any question. What's on your mind?",
+    ];
+    return greetings[Math.floor(Math.random() * greetings.length)];
   }
   
   // How are you
   if (/how\s*(are\s*you|r\s*u)/i.test(msg)) {
-    return "I'm doing great, thanks for asking! ☀️ I'm always ready to help you with weather information. What would you like to know?";
+    return "I'm doing great, thanks for asking! ☀️ I'm always ready to help you with weather information or answer any question you have. What would you like to know?";
   }
   
   // Thank you
-  if (/thank|thanks|thx/i.test(msg)) {
-    return "You're welcome! 😊 Is there anything else you'd like to know about the weather?";
+  if (/thank|thanks|thx|shukriya|dhanyavaad/i.test(msg)) {
+    return "You're welcome! 😊 Is there anything else you'd like to know about the weather or anything else?";
   }
   
   // Goodbye
-  if (/bye|goodbye|see\s*ya|later|cya/i.test(msg)) {
-    return "Goodbye! 👋 Stay weather-aware, and feel free to come back anytime you need weather information!";
+  if (/bye|goodbye|see\s*ya|later|cya|alvida/i.test(msg)) {
+    return "Goodbye! 👋 Stay weather-aware, and feel free to come back anytime you need weather information or just want to chat!";
   }
   
   // Jokes
-  if (/joke|funny|laugh/i.test(msg)) {
+  if (/joke|funny|laugh|humor|hasi|mazaak/i.test(msg)) {
     const jokes = [
       "Why don't weather forecasters win awards? Because they always say it's partly cloudy! ⛅",
       "What do you call a cold dog sitting on a rabbit? A chili dog on a bunny! 🐕",
       "Why did the weather vane win the race? Because it was always pointing in the right direction! 🌬️",
       "What's a meteorologist's favorite type of story? A thunder-thriller! ⛈️",
       "Why was the weather report so expensive? Because it cost a pretty penny for the forecast! 💰",
+      "What did the weatherman say to the mountain? \"I've got my eye on you — you look a little peaky today!\" 🏔️",
+      "Why did the sun go to school? To get a little brighter! ☀️",
+      "What did one raindrop say to the other? Two's company, three's a cloud! 🌧️",
     ];
     return jokes[Math.floor(Math.random() * jokes.length)];
   }
@@ -472,17 +575,27 @@ function getFallbackResponse(userMessage: string): string {
   }
   
   // Weather-related but no location
-  if (/weather|rain|snow|temperature|forecast|wind|sun|cloud|storm/i.test(msg)) {
-    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for Tokyo\"\n• \"Is it raining in London?\"";
+  if (/weather|rain|snow|temperature|forecast|wind|sun|cloud|storm|mausam|barish|garmi|thandi/i.test(msg)) {
+    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for my village in Punjab\"\n• \"Is it raining in London?\"\n\nI can find weather for **any location** — just tell me the name!";
   }
   
   // Help/capabilities
-  if (/help|what\s*can\s*you|capabilities|features/i.test(msg)) {
+  if (/help|what\s*can\s*you|capabilities|features|commands/i.test(msg)) {
     return generateHelpResponse();
   }
   
-  // Default
-  return "I'm Weather GPT, focused on providing weather intelligence! While I specialize in weather data, forecasts, and alerts, I'm always happy to chat. 🌤️\n\nTry asking me about:\n• Weather in any city\n• 7-day forecasts\n• UV index and conditions\n• Weather alerts\n\nWhat would you like to know?";
+  // Identity questions
+  if (/who\s*(made|created|built|are\s*you)|your\s*(name|creator|maker|team)/i.test(msg)) {
+    return "I'm **Weather GPT** 🌤️ — an intelligent weather assistant built by **Team Craxzy** for the Smart India Hackathon.\n\nI can help you with:\n• Real-time weather for any location\n• 7-day forecasts\n• Agriculture advisories for farmers\n• Disaster alerts\n• General knowledge questions\n\nAsk me anything!";
+  }
+  
+  // Math
+  if (/\d+\s*[+\-*/^%]\s*\d+/i.test(msg) || /calculate|math|solve/i.test(msg)) {
+    return "I'd be happy to help with math! However, without the Gemini AI API key set up, I can only provide weather-related answers. Please add a **GEMINI_API_KEY** to enable full AI capabilities, or ask me about the weather! 🌤️";
+  }
+  
+  // Default — encourage weather or general questions
+  return "I'm Weather GPT, your all-in-one weather and knowledge assistant! 🌤️\n\nI can help with:\n• **Weather** — ask about any city, village, or location\n• **Forecasts** — 7-day predictions with details\n• **Agriculture** — crop-specific weather advice\n• **Alerts** — cyclone, flood, heatwave warnings\n• **General questions** — ask me anything!\n\nWhat would you like to know?";
 }
 
 // ─── Chat mutation ──────────────────────────────────────────────────────────
@@ -633,69 +746,67 @@ export const processMessage = action({
     // Parse the query
     const parsed = parseQuery(content);
 
-    if (!parsed.location) {
-      // Call LLM for non-weather queries
-      const text = await callLLM(content);
-      await ctx.runMutation(api.chat.saveAssistantMessage, {
-        conversationId: args.conversationId,
-        content: text,
-      });
-      return { text, metadata: null };
-    }
+    // ── Route 1: Has a location → fetch weather ──
+    if (parsed.location) {
+      try {
+        const results = await ctx.runAction(api.weather.geocodeLocation, {
+          query: parsed.location,
+        });
 
-    try {
-      // Geocode the location
-      const results = await ctx.runAction(api.weather.geocodeLocation, {
-        query: parsed.location,
-      });
+        if (!results || results.length === 0) {
+          // Location not found — try LLM for general response
+          const text = await callLLM(content);
+          await ctx.runMutation(api.chat.saveAssistantMessage, {
+            conversationId: args.conversationId,
+            content: text,
+          });
+          return { text, metadata: null };
+        }
 
-      if (!results || results.length === 0) {
-        const text = generateErrorResponse(`Location "${parsed.location}" not found`);
+        const best = results[0];
+
+        const weatherData = await ctx.runAction(api.weather.fetchWeather, {
+          latitude: best.latitude,
+          longitude: best.longitude,
+          locationName: best.name,
+          country: best.country,
+          timezone: best.timezone || "auto",
+        });
+
+        let response: { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } };
+
+        if (parsed.intent === "forecast") {
+          response = generateForecastResponse(weatherData, content);
+        } else {
+          response = generateCurrentResponse(weatherData, content);
+        }
+
+        await ctx.runMutation(api.chat.saveAssistantMessage, {
+          conversationId: args.conversationId,
+          content: response.text,
+          metadata: response.metadata,
+        });
+
+        return response;
+      } catch (error) {
+        const text = generateErrorResponse(
+          error instanceof Error ? error.message : "Unknown error"
+        );
         await ctx.runMutation(api.chat.saveAssistantMessage, {
           conversationId: args.conversationId,
           content: text,
         });
         return { text, metadata: null };
       }
-
-      const best = results[0];
-
-      // Fetch weather data
-      const weatherData = await ctx.runAction(api.weather.fetchWeather, {
-        latitude: best.latitude,
-        longitude: best.longitude,
-        locationName: best.name,
-        country: best.country,
-        timezone: best.timezone || "auto",
-      });
-
-      // Generate response based on intent
-      let response: { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } };
-
-      if (parsed.intent === "forecast") {
-        response = generateForecastResponse(weatherData, content);
-      } else {
-        response = generateCurrentResponse(weatherData, content);
-      }
-
-      // Save assistant response
-      await ctx.runMutation(api.chat.saveAssistantMessage, {
-        conversationId: args.conversationId,
-        content: response.text,
-        metadata: response.metadata,
-      });
-
-      return response;
-    } catch (error) {
-      const text = generateErrorResponse(
-        error instanceof Error ? error.message : "Unknown error"
-      );
-      await ctx.runMutation(api.chat.saveAssistantMessage, {
-        conversationId: args.conversationId,
-        content: text,
-      });
-      return { text, metadata: null };
     }
+
+    // ── Route 2: No location → general knowledge via LLM ──
+    const text = await callLLM(content);
+    await ctx.runMutation(api.chat.saveAssistantMessage, {
+      conversationId: args.conversationId,
+      content: text,
+    });
+    return { text, metadata: null };
   },
 });
 

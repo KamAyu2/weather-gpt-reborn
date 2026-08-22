@@ -1,7 +1,7 @@
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState } from "react";
-import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw, Sprout, AlertTriangle, Globe } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw, Sprout, AlertTriangle, Globe, Navigation } from "lucide-react";
 import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
@@ -13,7 +13,7 @@ interface DashboardHomeProps {
   onAskQuestion: (text: string) => void;
 }
 
-const DEFAULT_LOCATIONS = ["Mumbai", "New York", "London", "Tokyo", "Delhi"];
+const DEFAULT_LOCATIONS = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata"];
 
 export function DashboardHome({ onSelectConversation, onAskQuestion }: DashboardHomeProps) {
   const starredMessages = useQuery(api.chat.getStarredMessages);
@@ -24,6 +24,63 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState("Mumbai");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<"idle" | "requesting" | "granted" | "denied">("idle");
+
+  // Auto-request geolocation on mount
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    setLocationStatus("requesting");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const loc = { lat: position.coords.latitude, lon: position.coords.longitude };
+        setUserLocation(loc);
+        setLocationStatus("granted");
+      },
+      () => {
+        setLocationStatus("denied");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+    );
+  }, []);
+
+  // Load weather by coordinates (for user's location)
+  const loadWeatherByCoords = useCallback(async (lat: number, lon: number) => {
+    setWeatherLoading(true);
+    setWeatherLocation("My Location");
+    try {
+      // Reverse geocode to get place name
+      const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`;
+      let placeName = "Your Location";
+      try {
+        const res = await fetch(nominatimUrl, { headers: { "User-Agent": "WeatherGPT/1.0" } });
+        if (res.ok) {
+          const data = await res.json();
+          placeName = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "Your Location";
+        }
+      } catch { /* use default */ }
+
+      const data = await fetchWeather({
+        latitude: lat,
+        longitude: lon,
+        locationName: placeName,
+        country: "India",
+        timezone: "auto",
+      });
+      setWeatherData(data);
+    } catch (err) {
+      console.error("Failed to load weather:", err);
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, [fetchWeather]);
+
+  // Auto-load weather when location is obtained
+  useEffect(() => {
+    if (userLocation && !weatherData) {
+      loadWeatherByCoords(userLocation.lat, userLocation.lon);
+    }
+  }, [userLocation, weatherData, loadWeatherByCoords]);
 
   const loadWeather = async (city: string) => {
     setWeatherLoading(true);
@@ -75,6 +132,19 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               Live Weather
             </h2>
             <div className="flex items-center gap-1">
+              {userLocation && (
+                <button
+                  onClick={() => loadWeatherByCoords(userLocation.lat, userLocation.lon)}
+                  className={`rounded-full px-2.5 py-1 text-[10px] transition-colors flex items-center gap-1 ${
+                    weatherLocation === "My Location" && weatherData
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <Navigation className="h-2.5 w-2.5" />
+                  My Location
+                </button>
+              )}
               {DEFAULT_LOCATIONS.map((city) => (
                 <button
                   key={city}

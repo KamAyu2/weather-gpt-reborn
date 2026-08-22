@@ -1,14 +1,16 @@
-import { CloudRain, MapPin, Thermometer, Wind, MessageCircle, HelpCircle, Snowflake, Sun, Sprout, AlertTriangle } from "lucide-react";
+import { CloudRain, MapPin, Thermometer, Wind, MessageCircle, HelpCircle, Snowflake, Sun, Sprout, AlertTriangle, Lightbulb, BookOpen } from "lucide-react";
 
 const SUGGESTIONS = [
   { text: "What's the weather in Mumbai?", icon: Thermometer, color: "text-orange-500" },
   { text: "7-day forecast for Delhi", icon: CloudRain, color: "text-blue-500" },
-  { text: "Is it raining in London?", icon: MapPin, color: "text-emerald-500" },
+  { text: "Weather in my village in Punjab", icon: MapPin, color: "text-emerald-500" },
   { text: "Should I irrigate crops in Pune?", icon: Sprout, color: "text-green-500" },
   { text: "Any cyclone alerts for Chennai?", icon: AlertTriangle, color: "text-red-500" },
   { text: "Tell me a joke", icon: MessageCircle, color: "text-violet-500" },
-  { text: "Snow forecast for Moscow", icon: Snowflake, color: "text-sky-500" },
-  { text: "UV index in Sydney today", icon: Sun, color: "text-yellow-500" },
+  { text: "What's the capital of France?", icon: BookOpen, color: "text-indigo-500" },
+  { text: "UV index in Shimla today", icon: Sun, color: "text-yellow-500" },
+  { text: "How do I make chai?", icon: Lightbulb, color: "text-amber-500" },
+  { text: "Weather in Srinagar this week", icon: Snowflake, color: "text-sky-500" },
 ];
 
 interface SuggestionChipsProps {
