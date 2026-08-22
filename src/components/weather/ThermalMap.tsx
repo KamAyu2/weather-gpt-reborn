@@ -333,7 +333,7 @@ function MapView({ cityData, isMobile, onCitySelect, userLocation, mapStyle }: {
               </div>
             </div>
           </Popup>
-        </CircleMarker>
+        </Marker>
       ))}
     </MapContainer>
   );
@@ -674,21 +674,33 @@ export function ThermalMap() {
         )}
       </AnimatePresence>
 
-      {/* Temperature Legend */}
+      {/* Temperature Legend — smooth thermal gradient bar */}
       <div className="px-3 sm:px-4 py-2.5 border-t border-border/30">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 shrink-0">
             <Thermometer className="h-3 w-3 text-muted-foreground/60" />
-            <span className="text-[10px] text-muted-foreground/60">Temperature Scale</span>
+            <span className="text-[10px] text-muted-foreground/60">Temperature</span>
           </div>
-          <div className="flex items-center gap-0.5">
-            {[{ label: "<5°", color: "#2563eb" }, { label: "5-15°", color: "#0891b2" }, { label: "15-25°", color: "#16a34a" }, { label: "25-32°", color: "#ca8a04" }, { label: "32-38°", color: "#ea580c" }, { label: "38-42°", color: "#dc2626" }, { label: ">42°", color: "#991b1b" }].map((item) => (
-              <div key={item.label} className="flex flex-col items-center">
-                <div className="w-3 sm:w-4 h-1.5 rounded-sm" style={{ backgroundColor: item.color }} />
-                <span className="text-[7px] text-muted-foreground/40 mt-0.5 hidden sm:block">{item.label}</span>
-              </div>
-            ))}
+          <div className="flex-1 max-w-[280px]">
+            <div
+              className="h-2 w-full rounded-full shadow-inner"
+              style={{ background: "linear-gradient(90deg, #2563eb, #0891b2, #0d9488, #16a34a, #65a30d, #ca8a04, #ea580c, #dc2626, #991b1b)" }}
+            />
+            <div className="flex justify-between mt-0.5">
+              {["<5°", "15°", "25°", "35°", ">42°"].map((label) => (
+                <span key={label} className="text-[8px] text-muted-foreground/40 tabular-nums">{label}</span>
+              ))}
+            </div>
           </div>
+          {!loading && cityData.length > 0 && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-medium text-emerald-600 dark:text-emerald-400 shrink-0">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              LIVE
+            </span>
+          )}
         </div>
       </div>
     </motion.div>
