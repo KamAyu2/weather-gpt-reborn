@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [langOpen, setLangOpen] = useState(false);
 
   useEffect(() => {
     const check = () => {
@@ -104,6 +105,7 @@ export default function Dashboard() {
       await processMessage({
         conversationId: convId,
         content: text,
+        language: language,
       });
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -168,7 +170,7 @@ export default function Dashboard() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 260, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }} className={`flex h-full flex-col border-r border-border/50 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl bg-background w-72" : "bg-muted/20"}`}
+            transition={{ duration: 0.2 }}            className={`flex h-full flex-col border-r border-border/50 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl bg-background w-72" : "bg-sidebar"}`}
           >
             {/* Logo */}
             <div className="flex h-14 items-center justify-between border-b border-border/50 px-4">
@@ -176,7 +178,7 @@ export default function Dashboard() {
                 <div className="flex h-7 w-7 items-center justify-center rounded-md gradient-primary shadow-sm">
                   <Cloud className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-xs font-semibold tracking-tight">Weather GPT</span>
+                <span className="text-xs font-semibold tracking-tight text-foreground">Weather GPT</span>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -197,7 +199,7 @@ export default function Dashboard() {
                 }`}
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                Dashboard
+                {translate("nav.dashboard")}
               </button>
               <button
                 onClick={handleNewConversation}
@@ -208,7 +210,7 @@ export default function Dashboard() {
                 }`}
               >
                 <Plus className="h-3.5 w-3.5" />
-                New Chat
+                {translate("nav.newChat")}
               </button>
               <button
                 onClick={() => setView("compare")}
@@ -219,7 +221,7 @@ export default function Dashboard() {
                 }`}
               >
                 <GitCompare className="h-3.5 w-3.5" />
-                Compare Cities
+                {translate("nav.compareCities")}
               </button>
               <button
                 onClick={() => setView("starred")}
@@ -230,7 +232,7 @@ export default function Dashboard() {
                 }`}
               >
                 <Star className="h-3.5 w-3.5" />
-                Saved Messages
+                {translate("nav.savedMessages")}
                 {starredMessages && starredMessages.length > 0 && (
                   <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                     {starredMessages.length}
@@ -244,35 +246,46 @@ export default function Dashboard() {
                 className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
               >
                 {currentTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-                {currentTheme === "dark" ? "Light Mode" : "Dark Mode"}
+                {currentTheme === "dark" ? translate("nav.lightMode") : translate("nav.darkMode")}
               </button>
 
-              {/* Language Selector */}
-              <div className="relative group">
+              {/* Language Selector — hover dropdown */}
+              <div className="relative" onMouseEnter={() => setLangOpen(true)} onMouseLeave={() => setLangOpen(false)}>
                 <button
                   className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
                 >
                   <Globe className="h-3.5 w-3.5" />
-                  <span>{LANGUAGES[language]?.native || "English"}</span>
+                  <span>{LANGUAGES[language]?.flag} {LANGUAGES[language]?.native || "English"}</span>
                 </button>
-                <div className="absolute left-0 top-full z-50 mt-1 hidden w-48 rounded-xl border border-border/60 bg-background shadow-xl group-hover:block">
-                  <div className="p-1.5 max-h-64 overflow-y-auto">
-                    {(Object.entries(LANGUAGES) as [Language, typeof LANGUAGES[Language]][]).map(([code, lang]) => (
-                      <button
-                        key={code}
-                        onClick={() => setLanguage(code)}
-                        className={`flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors ${
-                          language === code
-                            ? "bg-primary/10 text-primary font-medium"
-                            : "text-foreground hover:bg-muted/50"
-                        }`}
-                      >
-                        <span className="text-sm">{lang.flag}</span>
-                        <span>{lang.native}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <AnimatePresence>
+                  {langOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute left-0 top-full z-50 mt-1 w-52 rounded-xl border border-border/60 bg-card shadow-2xl"
+                    >
+                      <div className="p-1.5 max-h-64 overflow-y-auto">
+                        {(Object.entries(LANGUAGES) as [Language, typeof LANGUAGES[Language]][]).map(([code, lang]) => (
+                          <button
+                            key={code}
+                            onClick={() => { setLanguage(code); setLangOpen(false); }}
+                            className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                              language === code
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "text-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            <span className="text-sm w-5 text-center">{lang.flag}</span>
+                            <span>{lang.native}</span>
+                            {language === code && <span className="ml-auto text-primary text-[10px]">✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
@@ -291,7 +304,7 @@ export default function Dashboard() {
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   }`}
                 >
-                  {conv.title || "New conversation"}
+                  {conv.title || translate("nav.newChat")}
                 </button>
               ))}
             </div>
@@ -303,7 +316,7 @@ export default function Dashboard() {
                   {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "?"}
                 </div>
                 <div className="flex-1 truncate">
-                  <p className="truncate text-xs font-medium">{user?.name || "Guest"}</p>
+                  <p className="truncate text-xs font-medium text-foreground">{user?.name || "Guest"}</p>
                   <p className="truncate text-[10px] text-muted-foreground">{user?.email || "Anonymous"}</p>
                 </div>
                 <button
@@ -354,7 +367,7 @@ export default function Dashboard() {
                 <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground">
                   <Cloud className="h-3 w-3 text-background" />
                 </div>
-                <span className="text-xs font-semibold tracking-tight">Weather GPT</span>
+                <span className="text-xs font-semibold tracking-tight text-foreground">Weather GPT</span>
               </div>
             )}
             {sidebarOpen && view === "chat" && (
@@ -372,7 +385,7 @@ export default function Dashboard() {
             {sidebarOpen && view === "compare" && (
               <div className="flex items-center gap-2">
                 <GitCompare className="h-3.5 w-3.5 text-muted-foreground/50" />
-                <span className="text-xs text-muted-foreground">Compare Cities</span>
+                <span className="text-xs text-muted-foreground">{translate("compare.title")}</span>
               </div>
             )}
             {sidebarOpen && view === "starred" && (
@@ -413,9 +426,9 @@ export default function Dashboard() {
                 className="h-full overflow-y-auto"
               >
                 <div className="mx-auto max-w-4xl px-6 py-10">
-                  <h1 className="text-xl font-semibold tracking-tight">Compare Cities</h1>
+                  <h1 className="text-xl font-semibold tracking-tight text-foreground">{translate("compare.title")}</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Side-by-side weather comparison for up to 4 cities.
+                    {translate("compare.subtitle")}
                   </p>
                   <div className="mt-8">
                     <WeatherComparison />
@@ -434,9 +447,9 @@ export default function Dashboard() {
                 className="h-full overflow-y-auto"
               >
                 <div className="mx-auto max-w-3xl px-6 py-10">
-                  <h1 className="text-xl font-semibold tracking-tight">Saved Messages</h1>
+                  <h1 className="text-xl font-semibold tracking-tight text-foreground">{translate("common.saved")}</h1>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Weather responses you've saved for quick reference.
+                    {translate("common.starToSave")}
                   </p>
 
                   {starredMessages && starredMessages.length > 0 ? (
@@ -457,7 +470,7 @@ export default function Dashboard() {
                                     : msg.conversationTitle}
                                 </p>
                                 <span className="text-[10px] text-muted-foreground/50">
-                                  {new Date(msg.timestamp).toLocaleDateString("en-US", {
+                                  {new Date(msg.timestamp).toLocaleDateString(undefined, {
                                     month: "short",
                                     day: "numeric",
                                   })}
@@ -473,7 +486,7 @@ export default function Dashboard() {
                                 handleToggleStar(msg._id);
                               }}
                               className="shrink-0 rounded-md p-1 text-amber-500 hover:text-amber-600 transition-colors"
-                              title="Remove from saved"
+                              title={translate("common.removeFromSaved")}
                             >
                               <Star className="h-3.5 w-3.5 fill-current" />
                             </button>
@@ -485,10 +498,10 @@ export default function Dashboard() {
                     <div className="mt-8 rounded-xl border border-dashed border-border/50 p-12 text-center">
                       <Star className="h-6 w-6 text-muted-foreground/30 mx-auto mb-3" />
                       <p className="text-sm text-muted-foreground">
-                        No saved messages yet.
+                        {translate("common.noSavedMessages")}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground/60">
-                        Star any weather response in a conversation to save it here.
+                        {translate("common.starToSave")}
                       </p>
                     </div>
                   )}
@@ -518,11 +531,11 @@ export default function Dashboard() {
                           <Cloud className="h-7 w-7 text-muted-foreground/60" />
                         </div>
                       </div>
-                      <h2 className="text-lg font-medium tracking-tight">
-                        Ask about the weather
+                      <h2 className="text-lg font-medium tracking-tight text-foreground">
+                        {translate("chat.welcome")}
                       </h2>
                       <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                        Get current conditions, forecasts, and alerts for any location worldwide.
+                        {translate("chat.welcomeSubtitle")}
                       </p>
                       <div className="mt-8">
                         <SuggestionChips onSelect={handleSend} />

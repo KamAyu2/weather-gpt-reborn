@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
 import { ThermalMap } from "@/components/weather/ThermalMap";
+import { useLanguage } from "@/lib/i18n";
 import type { WeatherData } from "@/convex/weather";
 
 interface DashboardHomeProps {
@@ -16,6 +17,7 @@ interface DashboardHomeProps {
 const DEFAULT_LOCATIONS = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata"];
 
 export function DashboardHome({ onSelectConversation, onAskQuestion }: DashboardHomeProps) {
+  const { translate } = useLanguage();
   const starredMessages = useQuery(api.chat.getStarredMessages);
   const conversations = useQuery(api.chat.getConversations);
   const geocode = useAction(api.weather.geocodeLocation);
@@ -116,9 +118,9 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">{translate("dashboard.title")}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Weather overview and your saved insights.
+            {translate("dashboard.subtitle")}
           </p>
         </motion.div>
 
@@ -131,7 +133,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
         >
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Live Weather
+              {translate("dashboard.liveWeather")}
             </h2>
             <div className="flex items-center gap-1">
               {userLocation && (
@@ -144,7 +146,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
                   }`}
                 >
                   <Navigation className="h-2.5 w-2.5" />
-                  My Location
+                  {translate("dashboard.myLocation")}
                 </button>
               )}
               {DEFAULT_LOCATIONS.map((city) => (
@@ -179,26 +181,26 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Sprout className="h-4 w-4 text-green-600" />
-                  <span className="text-xs font-medium">Agriculture Advisory</span>
+                  <span className="text-xs font-medium">{translate("agri.title")}</span>
                 </div>
                 <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
                   {weatherData.current.temperature >= 35 && (
-                    <p>• Heat stress risk for crops — ensure adequate irrigation</p>
+                    <p>• {translate("agri.heatStress")}</p>
                   )}
                   {weatherData.current.temperature <= 10 && (
-                    <p>• Frost risk for sensitive crops — consider protective measures</p>
+                    <p>• {translate("agri.frostRisk")}</p>
                   )}
                   {weatherData.daily[0]?.precipitationProbabilityMax > 50 && (
-                    <p>• Delay pesticide/fertilizer application — rain expected</p>
+                    <p>• {translate("agri.delayPesticide")}</p>
                   )}
                   {weatherData.current.humidity > 80 && (
-                    <p>• High humidity — watch for fungal diseases in crops</p>
+                    <p>• {translate("agri.highHumidity")}</p>
                   )}
                   {weatherData.current.windSpeed > 25 && (
-                    <p>• Strong winds — avoid spraying operations</p>
+                    <p>• {translate("agri.strongWinds")}</p>
                   )}
                   {weatherData.current.temperature >= 15 && weatherData.current.temperature <= 35 && (
-                    <p>• Good conditions for agricultural activities</p>
+                    <p>• {translate("agri.goodConditions")}</p>
                   )}
                 </div>
               </div>
@@ -207,26 +209,26 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-amber-50/80 to-orange-50/80 dark:from-amber-950/30 dark:to-orange-950/30 p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <span className="text-xs font-medium">Disaster Alert Status</span>
+                  <span className="text-xs font-medium">{translate("disaster.title")}</span>
                 </div>
                 <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
                   {weatherData.current.temperature >= 42 && (
-                    <p>• ⛔ Extreme heatwave — avoid outdoor activities</p>
+                    <p>• ⛔ {translate("disaster.extremeHeat")}</p>
                   )}
                   {weatherData.current.temperature >= 38 && weatherData.current.temperature < 42 && (
-                    <p>• ⚠️ Heatwave advisory — take precautions</p>
+                    <p>• ⚠️ {translate("disaster.heatAdvisory")}</p>
                   )}
                   {weatherData.current.temperature <= 2 && (
-                    <p>• ⛔ Severe cold wave — risk of hypothermia</p>
+                    <p>• ⛔ {translate("disaster.severeCold")}</p>
                   )}
                   {weatherData.current.weatherCode >= 95 && (
-                    <p>• ⛔ Thunderstorm active — seek shelter</p>
+                    <p>• ⛔ {translate("disaster.thunderstorm")}</p>
                   )}
                   {weatherData.current.windSpeed >= 60 && (
-                    <p>• ⛔ Severe winds — stay indoors</p>
+                    <p>• ⛔ {translate("disaster.severeWind")}</p>
                   )}
                   {weatherData.current.temperature >= 10 && weatherData.current.temperature <= 38 && weatherData.current.weatherCode < 95 && weatherData.current.windSpeed < 60 && (
-                    <p>• ✅ All clear — no severe weather alerts</p>
+                    <p>• ✅ {translate("disaster.allClear")}</p>
                   )}
                 </div>
               </div>
@@ -238,10 +240,10 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
             >
               <Cloud className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">
-                {weatherLoading ? "Loading weather data..." : "Click to load live weather"}
+                {weatherLoading ? translate("dashboard.loadingWeather") : translate("dashboard.clickToLoad")}
               </p>
               <p className="mt-1 text-xs text-muted-foreground/50">
-                Real-time conditions from Open-Meteo
+                {translate("dashboard.realTimeData")}
               </p>
             </button>
           )}
@@ -263,9 +265,8 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
           className="mt-10"
-        >
-          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Ask a question
+        >            <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {translate("dashboard.askQuestion")}
           </h2>
           <SuggestionChips onSelect={onAskQuestion} />
         </motion.div>
@@ -278,10 +279,10 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4"
         >
           {[
-            { icon: Cloud, label: "Conversations", value: conversations?.length ?? 0 },
-            { icon: Star, label: "Saved Messages", value: starredMessages?.length ?? 0 },
-            { icon: MapPin, label: "Locations Queried", value: starredMessages ? new Set(starredMessages.map((m) => m.metadata?.location).filter(Boolean)).size : 0 },
-            { icon: Thermometer, label: "Data Points", value: "Live" },
+            { icon: Cloud, label: translate("dashboard.conversations"), value: conversations?.length ?? 0 },
+            { icon: Star, label: translate("dashboard.savedMessages"), value: starredMessages?.length ?? 0 },
+            { icon: MapPin, label: translate("dashboard.locationsQueried"), value: starredMessages ? new Set(starredMessages.map((m) => m.metadata?.location).filter(Boolean)).size : 0 },
+            { icon: Thermometer, label: translate("dashboard.dataPoints"), value: "Live" },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -302,7 +303,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           className="mt-10"
         >
           <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Saved Messages
+            {translate("dashboard.savedMessages")}
           </h2>
           {starredMessages && starredMessages.length > 0 ? (
             <div className="space-y-2">
@@ -332,7 +333,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
             <div className="rounded-xl border border-dashed border-border/50 p-8 text-center">
               <Star className="h-5 w-5 text-muted-foreground/30 mx-auto mb-2" />
               <p className="text-xs text-muted-foreground">
-                No saved messages yet. Star any weather response to save it here.
+                {translate("dashboard.noSavedMessages")} {translate("common.starToSave")}
               </p>
             </div>
           )}
@@ -347,7 +348,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
             className="mt-10 pb-10"
           >
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Recent Conversations
+              {translate("dashboard.recentConversations")}
             </h2>
             <div className="space-y-1">
               {conversations.slice(0, 5).map((conv) => (
@@ -356,7 +357,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
                   onClick={() => onSelectConversation(conv._id)}
                   className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-xs transition-colors hover:bg-muted/40"
                 >
-                  <span className="truncate text-foreground/80">{conv.title || "New conversation"}</span>
+                  <span className="truncate text-foreground/80">{conv.title || translate("nav.newChat")}</span>
                   <ArrowRight className="h-3 w-3 text-muted-foreground/40 shrink-0 ml-2" />
                 </button>
               ))}

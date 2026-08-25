@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { LayoutDashboard, Plus, Star, GitCompare, MessageSquare } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 type View = "home" | "chat" | "starred" | "compare";
 
@@ -10,22 +11,25 @@ interface MobileNavProps {
   starredCount?: number;
 }
 
-const NAV_ITEMS: { key: View; label: string; icon: React.ElementType }[] = [
-  { key: "home", label: "Home", icon: LayoutDashboard },
-  { key: "compare", label: "Compare", icon: GitCompare },
-  { key: "chat", label: "Chat", icon: MessageSquare },
-  { key: "starred", label: "Saved", icon: Star },
+const NAV_ITEM_KEYS: { key: View; labelKey: string; icon: React.ElementType }[] = [
+  { key: "home", labelKey: "mobile.home", icon: LayoutDashboard },
+  { key: "compare", labelKey: "mobile.compare", icon: GitCompare },
+  { key: "chat", labelKey: "chat.chat", icon: MessageSquare },
+  { key: "starred", labelKey: "mobile.saved", icon: Star },
 ];
 
 export function MobileNav({ currentView, onViewChange, onNewChat, starredCount = 0 }: MobileNavProps) {
+  const { translate } = useLanguage();
+
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 sm:hidden safe-area-bottom">
       {/* Glass effect backdrop */}
       <div className="border-t border-border/50 bg-background/80 backdrop-blur-xl">
         <nav className="flex items-center justify-around px-2 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEM_KEYS.map((item) => {
             const isActive = currentView === item.key;
             const Icon = item.icon;
+            const label = translate(item.labelKey);
 
             return (
               <button
@@ -55,7 +59,7 @@ export function MobileNav({ currentView, onViewChange, onNewChat, starredCount =
                   )}
                 </div>
                 <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}>
-                  {item.label}
+                  {label}
                 </span>
               </button>
             );

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Mic, MicOff } from "lucide-react";
 
 interface VoiceInputProps {
@@ -15,9 +15,9 @@ interface SpeechRecognitionInstance {
   start(): void;
   stop(): void;
   abort(): void;
-  onresult: (event: { results: { length: number; 0: { length: number; 0: { transcript: string; isFinal: boolean } } } }) => void;
-  onerror: (event: { error: string }) => void;
-  onend: () => void;
+  onresult: ((event: { results: { length: number; 0: { length: number; 0: { transcript: string; isFinal: boolean } } } }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
 }
 
 declare global {
@@ -30,46 +30,64 @@ declare global {
 export function VoiceInput({ onResult, disabled = false, language = "en-US" }: VoiceInputProps) {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
-  const [recognition, setRecognition] = useState<SpeechRecognitionInstance | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const onResultRef = useRef(onResult);
 
+  // Keep onResult ref current without recreating recognition
+  useEffect(() => {
+    onResultRef.current = onResult;
+  }, [onResult]);
+
+  // Create SpeechRecognition once
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognitionAPI) {
-      setIsSupported(true);
-      const recognitionInstance = new SpeechRecognitionAPI();
-      recognitionInstance.continuous = false;
-      recognitionInstance.interimResults = false;
-      recognitionInstance.lang = language;
+    if (!SpeechRecognitionAPI) return;
 
-      recognitionInstance.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        onResult(transcript);
-        setIsListening(false);
-      };
+    setIsSupported(true);
+    const recognitionInstance = new SpeechRecognitionAPI();
+    recognitionInstance.continuous = false;
+    recognitionInstance.interimResults = false;
+    recognitionInstance.lang = language;
 
-      recognitionInstance.onerror = () => {
-        setIsListening(false);
-      };
+    recognitionInstance.onresult = (event: { results: { length: number; 0: { length: number; 0: { transcript: string; isFinal: boolean } } } }) => {
+      const transcript = event.results[0][0].transcript;
+      onResultRef.current(transcript);
+      setIsListening(false);
+    };
 
-      recognitionInstance.onend = () => {
-        setIsListening(false);
-      };
+    recognitionInstance.onerror = () => {
+      setIsListening(false);
+    };
 
-      setRecognition(recognitionInstance);
-    }
-  }, [language, onResult]);
+    recognitionInstance.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognitionInstance;
+
+    return () => {
+      try { recognitionInstance.abort(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+    };
+  }, [language]); // Only recreate when language changes
 
   const toggleListening = useCallback(() => {
+    const recognition = recognitionRef.current;
     if (!recognition) return;
 
     if (isListening) {
-      recognition.stop();
+      try { recognition.stop(); } catch { /* ignore */ }
       setIsListening(false);
     } else {
-      recognition.start();
-      setIsListening(true);
+      try {
+        recognition.start();
+        setIsListening(true);
+      } catch {
+        // Already started or other error
+        setIsListening(false);
+      }
     }
-  }, [recognition, isListening]);
+  }, [isListening]);
 
   if (!isSupported) {
     return null;

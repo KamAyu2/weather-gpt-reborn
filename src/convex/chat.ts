@@ -453,11 +453,18 @@ function generateHelpResponse(): string {
 
 // ─── LLM Integration ──────────────────────────────────────────────────────
 
-async function callLLM(userMessage: string): Promise<string> {
+async function callLLM(userMessage: string, language: string = "en"): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return getFallbackResponse(userMessage);
   }
+
+  // Map language codes to language names for the AI
+  const LANGUAGE_MAP: Record<string, string> = {
+    en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", te: "Telugu",
+    mr: "Marathi", gu: "Gujarati", kn: "Kannada", ml: "Malayalam", pa: "Punjabi",
+  };
+  const languageName = LANGUAGE_MAP[language] || "English";
 
   const systemPrompt = `You are Weather GPT — an intelligent, friendly AI assistant created by Team Craxzy for the Smart India Hackathon.
 
@@ -493,7 +500,14 @@ IMPORTANT RULES:
 2. For general questions — be as helpful as possible with your knowledge
 3. Never make up weather data — if you don't have real-time data, say so
 4. Be especially helpful for farmers and rural users
-5. If the user seems confused, gently guide them`;
+5. If the user seems confused, gently guide them
+
+LANGUAGE RULE:
+- The user has selected ${languageName} as their preferred language.
+- You MUST respond entirely in ${languageName}.
+- Keep technical weather terms in English if they have no common translation, but all conversational text, explanations, and descriptions must be in ${languageName}.
+- If the user writes to you in ${languageName}, respond in ${languageName}.
+- Weather data values (temperatures, percentages, wind speeds) stay as numbers, but labels and descriptions should be in ${languageName}.`;
 
   try {
     const response = await fetch(
@@ -729,9 +743,11 @@ export const processMessage = action({
   args: {
     conversationId: v.id("conversations"),
     content: v.string(),
+    language: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const content = args.content.trim();
+    const lang = args.language || "en";
 
     // Handle help/commands
     if (content.toLowerCase() === "help" || content.toLowerCase() === "/help") {
@@ -755,7 +771,7 @@ export const processMessage = action({
 
         if (!results || results.length === 0) {
           // Location not found — try LLM for general response
-          const text = await callLLM(content);
+          const text = await callLLM(content, lang);
           await ctx.runMutation(api.chat.saveAssistantMessage, {
             conversationId: args.conversationId,
             content: text,
@@ -801,7 +817,7 @@ export const processMessage = action({
     }
 
     // ── Route 2: No location → general knowledge via LLM ──
-    const text = await callLLM(content);
+    const text = await callLLM(content, lang);
     await ctx.runMutation(api.chat.saveAssistantMessage, {
       conversationId: args.conversationId,
       content: text,
