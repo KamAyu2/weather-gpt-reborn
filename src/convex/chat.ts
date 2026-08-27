@@ -1105,35 +1105,75 @@ export const processMessage = action({
             endDate,
           });
 
-          let text: string = `**Weather in ${best.name} during ${periodLabel}:**\n\n`;
+          // Check if we got meaningful data
+          const hasData = historical.summary.totalDays > 0 && historical.summary.avgTempMax !== 0;
+          
+          let text: string = `**Climate Trend in ${best.name} during ${periodLabel}:**\n\n`;
+          
+          if (hasData) {
           text += `**Summary:**\n`;
           text += `• Average High: ${historical.summary.avgTempMax}°C\n`;
           text += `• Average Low: ${historical.summary.avgTempMin}°C\n`;
+          text += `• Temperature Range: ${historical.summary.avgTempMin}°C to ${historical.summary.avgTempMax}°C\n`;
           text += `• Total Precipitation: ${historical.summary.totalPrecipitation} mm\n`;
           text += `• Rainy Days: ${historical.summary.rainyDays} out of ${historical.summary.totalDays} days\n`;
-          if (historical.summary.hottestDay.date) {
+          if (historical.summary.hottestDay.date && historical.summary.hottestDay.temp > -999) {
             text += `• Hottest Day: ${historical.summary.hottestDay.date} (${historical.summary.hottestDay.temp}°C)\n`;
           }
-          if (historical.summary.coldestDay.date) {
+          if (historical.summary.coldestDay.date && historical.summary.coldestDay.temp < 999) {
             text += `• Coldest Day: ${historical.summary.coldestDay.date} (${historical.summary.coldestDay.temp}°C)\n`;
           }
           
           text += `\n**Monthly Trend:**\n`;
           // Group by month and show averages
           const monthlyData: Record<string, { temps: number[]; precip: number[] }> = {};
-          historical.daily.forEach((d: {date: string; temperatureMax: number; temperatureMin: number; temperatureMean: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}) => {
+          historical.daily.forEach((d: {date: string; temperatureMax: number | null; temperatureMin: number | null; temperatureMean: number | null; precipitationSum: number; weatherCode: number; windSpeedMax: number}) => {
             const month = d.date.slice(0, 7);
             if (!monthlyData[month]) monthlyData[month] = { temps: [], precip: [] };
-            monthlyData[month].temps.push(d.temperatureMax);
+            if (d.temperatureMax != null && d.temperatureMax !== 0) monthlyData[month].temps.push(d.temperatureMax);
             monthlyData[month].precip.push(d.precipitationSum);
           });
           Object.entries(monthlyData).forEach(([month, data]) => {
-            const avgTemp = (data.temps.reduce((a, b) => a + b, 0) / data.temps.length).toFixed(1);
-            const totalPrecip = data.precip.reduce((a, b) => a + b, 0).toFixed(1);
-            text += `• ${month}: Avg ${avgTemp}°C, ${totalPrecip}mm rain\n`;
+            if (data.temps.length > 0) {
+              const avgTemp = (data.temps.reduce((a, b) => a + b, 0) / data.temps.length).toFixed(1);
+              const totalPrecip = data.precip.reduce((a, b) => a + b, 0).toFixed(1);
+              text += `• ${month}: Avg ${avgTemp}°C, ${totalPrecip}mm rain\n`;
+            } else {
+              const totalPrecip = data.precip.reduce((a, b) => a + b, 0).toFixed(1);
+              text += `• ${month}: ${totalPrecip}mm rain\n`;
+            }
           });
 
-          text += `\nThis data is from Open-Meteo's historical weather archive. For detailed climate trend analysis, I recommend asking about specific patterns.`;
+          // Climate insights
+          text += `\n**Climate Insights:**\n`;
+          if (historical.summary.avgTempMax >= 35) {
+            text += `• ${best.name} experienced significant heat during this period with average highs of ${historical.summary.avgTempMax}°C\n`;
+          } else if (historical.summary.avgTempMin <= 15) {
+            text += `• ${best.name} had cooler conditions with average lows of ${historical.summary.avgTempMin}°C\n`;
+          }
+          if (historical.summary.rainyDays > historical.summary.totalDays * 0.5) {
+            text += `• Heavy rainfall activity — more than half the days had rain\n`;
+          } else if (historical.summary.rainyDays < historical.summary.totalDays * 0.15) {
+            text += `• Mostly dry conditions with very few rainy days\n`;
+          }
+          const avgPrecip = historical.summary.totalDays > 0 ? (historical.summary.totalPrecipitation / historical.summary.totalDays).toFixed(1) : 0;
+          text += `• Average daily precipitation: ${avgPrecip}mm\n`;
+          } else {
+            text += `The historical archive doesn't have complete temperature data for this period yet.\n\n`;
+            text += `Based on ${best.name}'s known climate patterns:\n`;
+            if (best.country === "India" || (best.latitude > 8 && best.latitude < 37 && best.longitude > 68 && best.longitude < 98)) {
+              text += `• ${best.name} has a tropical climate with distinct wet and dry seasons\n`;
+              text += `• Southwest monsoon (Jun-Sep) brings the bulk of rainfall\n`;
+              text += `• Northeast monsoon (Oct-Dec) is important for southeastern India\n`;
+              text += `• Summer temperatures typically range 30-45°C depending on the region\n`;
+              text += `• Winter temperatures range 15-30°C in most of India\n`;
+            } else {
+              text += `• For specific climate patterns, try asking about current weather conditions\n`;
+            }
+            text += `\nYou can ask about current weather or a different time period for real data.`;
+          }
+          
+          text += `\n\n*Data from Open-Meteo's historical weather archive. For detailed climate trend analysis, ask about specific patterns like rainfall trends, temperature anomalies, or seasonal comparisons.*`;
           
           await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
           return { text, metadata: null };

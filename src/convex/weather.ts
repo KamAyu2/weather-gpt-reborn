@@ -337,29 +337,29 @@ export const fetchHistoricalWeather = action({
 
     const dailyData: DailyHistorical[] = data.daily.time.map((date: string, i: number) => ({
       date,
-      temperatureMax: data.daily.temperature_2m_max[i] ?? 0,
-      temperatureMin: data.daily.temperature_2m_min[i] ?? 0,
-      temperatureMean: data.daily.temperature_2m_mean[i] ?? 0,
-      precipitationSum: data.daily.precipitation_sum[i] ?? 0,
-      weatherCode: data.daily.weather_code[i] ?? 0,
-      windSpeedMax: data.daily.wind_speed_10m_max[i] ?? 0,
+      temperatureMax: data.daily.temperature_2m_max?.[i] ?? null as unknown as number,
+      temperatureMin: data.daily.temperature_2m_min?.[i] ?? null as unknown as number,
+      temperatureMean: data.daily.temperature_2m_mean?.[i] ?? null as unknown as number,
+      precipitationSum: data.daily.precipitation_sum?.[i] ?? 0,
+      weatherCode: data.daily.weather_code?.[i] ?? 0,
+      windSpeedMax: data.daily.wind_speed_10m_max?.[i] ?? 0,
     }));
 
-    // Calculate summary stats
-    const validTemps = dailyData.filter((d: DailyHistorical) => d.temperatureMax !== null);
+    // Filter to only days with valid temperature data for averages
+    const validTemps = dailyData.filter((d: DailyHistorical) => d.temperatureMax != null && d.temperatureMax !== 0);
     const avgTempMax = validTemps.length > 0
-      ? validTemps.reduce((sum: number, d: DailyHistorical) => sum + d.temperatureMax, 0) / validTemps.length
+      ? validTemps.reduce((sum: number, d: DailyHistorical) => sum + (d.temperatureMax ?? 0), 0) / validTemps.length
       : 0;
     const avgTempMin = validTemps.length > 0
-      ? validTemps.reduce((sum: number, d: DailyHistorical) => sum + d.temperatureMin, 0) / validTemps.length
+      ? validTemps.reduce((sum: number, d: DailyHistorical) => sum + (d.temperatureMin ?? 0), 0) / validTemps.length
       : 0;
     const totalPrecipitation = dailyData.reduce((sum: number, d: DailyHistorical) => sum + (d.precipitationSum || 0), 0);
 
     let hottestDay = { date: "", temp: -999 };
     let coldestDay = { date: "", temp: 999 };
     for (const d of dailyData) {
-      if (d.temperatureMax > hottestDay.temp) hottestDay = { date: d.date, temp: d.temperatureMax };
-      if (d.temperatureMin < coldestDay.temp) coldestDay = { date: d.date, temp: d.temperatureMin };
+      if (d.temperatureMax != null && d.temperatureMax > hottestDay.temp) hottestDay = { date: d.date, temp: d.temperatureMax };
+      if (d.temperatureMin != null && d.temperatureMin < coldestDay.temp) coldestDay = { date: d.date, temp: d.temperatureMin };
     }
 
     const rainyDays = dailyData.filter((d: DailyHistorical) => (d.precipitationSum || 0) > 1).length;
