@@ -3,14 +3,14 @@ import { useRef, useState, useEffect } from "react";
 import { MapPin, Languages, Zap, Shield, TrendingUp, Users, Globe2, Cloud } from "lucide-react";
 
 const STATS = [
-  { value: 200000, suffix: "+", label: "Weather Stations", icon: MapPin, color: "text-blue-500" },
-  { value: 10, suffix: "", label: "Indian Languages", icon: Languages, color: "text-violet-500" },
-  { value: 15, suffix: "min", label: "Update Frequency", icon: Zap, color: "text-amber-500" },
-  { value: 24, suffix: "/7", label: "Available", icon: Shield, color: "text-emerald-500" },
-  { value: 99.9, suffix: "%", label: "Uptime", icon: TrendingUp, color: "text-cyan-500" },
-  { value: 100, suffix: "+", label: "Countries Covered", icon: Globe2, color: "text-indigo-500" },
-  { value: 50, suffix: "ms", label: "Avg Response", icon: Cloud, color: "text-sky-500" },
-  { value: 1000, suffix: "+", label: "Daily Queries", icon: Users, color: "text-rose-500" },
+  { value: 200000, suffix: "+", label: "Weather Stations", icon: MapPin, color: "text-primary" },
+  { value: 10, suffix: "", label: "Indian Languages", icon: Languages, color: "text-secondary" },
+  { value: 15, suffix: "min", label: "Update Frequency", icon: Zap, color: "text-primary" },
+  { value: 24, suffix: "/7", label: "Available", icon: Shield, color: "text-secondary" },
+  { value: 99.9, suffix: "%", label: "Uptime", icon: TrendingUp, color: "text-primary" },
+  { value: 100, suffix: "+", label: "Countries Covered", icon: Globe2, color: "text-secondary" },
+  { value: 50, suffix: "ms", label: "Avg Response", icon: Cloud, color: "text-primary" },
+  { value: 1000, suffix: "+", label: "Daily Queries", icon: Users, color: "text-secondary" },
 ];
 
 function formatNumber(value: number): string {

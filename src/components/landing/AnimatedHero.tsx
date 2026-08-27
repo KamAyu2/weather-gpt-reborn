@@ -70,7 +70,7 @@ export function AnimatedHero() {
         {/* Badge */}
         <div className="mb-8">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-1.5 text-sm text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
             AI-Powered Weather
           </span>
         </div>

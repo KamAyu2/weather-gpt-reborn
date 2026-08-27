@@ -91,7 +91,7 @@ export function LiveDemo() {
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="mx-auto max-w-2xl text-center mb-14 sm:mb-20">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-sm text-muted-foreground mb-5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
             Live Demo
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
@@ -113,8 +113,8 @@ export function LiveDemo() {
                 </div>
                 <div>
                   <p className="text-sm font-bold">Weather GPT</p>
-                  <p className="text-xs text-emerald-500 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  <p className="text-xs text-primary flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                     Online
                   </p>
                 </div>
