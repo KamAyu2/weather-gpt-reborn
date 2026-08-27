@@ -623,8 +623,13 @@ function getFallbackResponse(userMessage: string): string {
     return `It's currently ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} on ${now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}. Would you like to know the weather for this time?`;
   }
   
-  // Weather-related but no location
+  // Weather-related but no location — check if it's a general weather knowledge question
   if (/weather|rain|snow|temperature|forecast|wind|sun|cloud|storm|mausam|barish|garmi|thandi/i.test(msg)) {
+    // Check if it's a question asking for recommendations, comparisons, or general knowledge
+    if (/which|what|where|best|worst|top|most|least|recommend|suggest|good place|nice weather|pleasant|visit|travel|holiday|vacation|tour|explore|enjoy|relax/i.test(msg)) {
+      return "Great question! Here are some places known for their excellent weather:\n\nYear-round pleasant climate:\n- Bali, Indonesia: tropical paradise, warm and sunny\n- Canary Islands, Spain: mild winters, warm summers\n- San Diego, USA: near-perfect temperatures all year\n- Medellin, Colombia: City of Eternal Spring\n- Mauritius: beautiful tropical island\n\nBest weather in India:\n- Shimla and Manali: cool mountain air, snow in winter\n- Ooty and Kodaikanal: pleasant hill station weather\n- Goa: warm beaches, best from Nov to Feb\n- Ladakh: stunning landscapes, best in summer\n- Coorg, Karnataka: misty hills, green and cool\n\nBest time to visit: Hill stations Oct-Jun, Beaches Nov-Feb, Desert Oct-Mar\n\nWant me to check the current weather at any of these places?";
+    }
+    // Otherwise ask for a location
     return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for my village in Punjab\"\n• \"Is it raining in London?\"\n\nI can find weather for **any location** — just tell me the name!";
   }
   
