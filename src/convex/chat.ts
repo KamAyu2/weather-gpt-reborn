@@ -109,14 +109,30 @@ const INDIAN_LOCATIONS = [
   "Amer Fort", "Hawa Mahal", "City Palace Jaipur", "Gateway of India", "Marine Drive",
   "Victoria Memorial", "Howrah Bridge", "India Gate", "Red Fort", "Taj Mahal",
   "Qutub Minar", "Charminar", "Meenakshi Temple", "Golden Temple",
-  // International (kept for global queries)
+  // South Asia
+  "Lahore", "Karachi", "Islamabad", "Rawalpindi", "Faisalabad", "Multan", "Peshawar", "Quetta",
+  "Dhaka", "Chittagong", "Sylhet", "Khulna", "Rajshahi",
+  "Colombo", "Kandy", "Galle", "Jaffna",
+  "Kathmandu", "Pokhara", "Lalitpur",
+  "Thimphu", "Paro",
+  "Male",
+  // International
   "New York", "London", "Tokyo", "Paris", "Sydney", "Dubai", "Singapore", "Berlin",
   "Toronto", "Los Angeles", "Chicago", "San Francisco", "Washington DC", "Moscow",
   "Beijing", "Seoul", "Bangkok", "Istanbul", "Cairo", "Nairobi", "Lagos",
   "Rio de Janeiro", "Buenos Aires", "Mexico City", "Lima", "Bogota", "Santiago",
   "Johannesburg", "Cape Town", "Rome", "Barcelona", "Amsterdam", "Vienna",
   "Prague", "Zurich", "Geneva", "Stockholm", "Oslo", "Helsinki", "Copenhagen",
-  "Warsaw", "Budapest", "Athens", "Lisbon", "Madrid", "Mumbai", "Delhi",
+  "Warsaw", "Budapest", "Athens", "Lisbon", "Madrid",
+  // Countries (for queries like "weather in Pakistan")
+  "Pakistan", "Bangladesh", "Sri Lanka", "Nepal", "Bhutan", "Maldives",
+  "Afghanistan", "Myanmar", "China", "Japan", "Thailand", "Vietnam",
+  "Indonesia", "Philippines", "Malaysia",
+  "United States", "United Kingdom", "Canada", "Australia", "Germany",
+  "France", "Italy", "Spain", "Russia", "Brazil", "Mexico",
+  "South Africa", "Egypt", "Turkey", "Saudi Arabia", "UAE", "Nigeria",
+  "Kenya", "Ethiopia", "Morocco", "Algeria",
+  "Argentina", "Chile", "Colombia", "Peru",
 ];
 
 // Weather-related keywords
@@ -204,15 +220,34 @@ function parseQuery(userMessage: string): ParsedQuery {
   }
 
   // Strategy 2: Look for prepositions and extract the text after them
-  // Only for weather-specific prepositions (in/at/near), not general knowledge patterns
+  // Matches: "in Pakistan", "weather of Tokyo", "visit Paris", "forecast for London"
   if (!location && !isKnowledgeQuestion) {
-    const prepositionMatch = /(?:in|at|near|around|from|to)\s+(.+)/i.exec(userMessage);
+    const prepositionMatch = /(?:in|at|near|around|from|to|of|for|visit|going to|travel to|staying in)\s+([A-Za-z\s,.'-]+)/i.exec(userMessage);
     if (prepositionMatch) {
       let candidate = prepositionMatch[1].trim();
       candidate = candidate.replace(/[?.!,;:]+$/, "").trim();
       const words = candidate.split(/\s+/).slice(0, 4).join(" ");
       if (words.length >= 2) {
         location = words;
+      }
+    }
+  }
+
+  // Strategy 3: If weather query but no location found, try to extract the last proper noun (country/city name)
+  // This catches queries like "I want to visit Pakistan what is the weather conditions there"
+  if (!location && isWeatherQuery) {
+    const nounMatch = /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g.exec(userMessage);
+    if (nounMatch) {
+      // Find the last proper noun that isn't a common English word
+      const commonWords = new Set(["Weather", "What", "Where", "When", "How", "Why", "Which", "Current", "Today", "Tomorrow", "This", "That", "There", "Here", "I", "Want", "To", "Is", "The", "My", "And", "But", "With", "For", "About", "Like"]);
+      const matches = userMessage.match(/\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g);
+      if (matches) {
+        for (let i = matches.length - 1; i >= 0; i--) {
+          if (!commonWords.has(matches[i])) {
+            location = matches[i];
+            break;
+          }
+        }
       }
     }
   }
@@ -232,8 +267,9 @@ function parseQuery(userMessage: string): ParsedQuery {
     intent = "current";
   }
 
-  // If it's a knowledge question, clear any accidentally extracted location
-  if (isKnowledgeQuestion) {
+  // If it's a pure knowledge question (no weather intent at all), clear location
+  // But if it HAS weather keywords, always keep the location — it's a weather query
+  if (isKnowledgeQuestion && !isWeatherQuery) {
     location = null;
   }
 
