@@ -124,71 +124,71 @@ html {
 /* CHANGE VALUES FOR THEME */
 :root {
   --radius: 0.5rem;
-  --background: #F0F6FC;
-  --foreground: #1A1A2E;
+  --background: #F5F3F7;
+  --foreground: #1F1B2E;
   --card: #FFFFFF;
-  --card-foreground: #1A1A2E;
+  --card-foreground: #1F1B2E;
   --popover: #FFFFFF;
-  --popover-foreground: #1A1A2E;
-  --primary: #4A90D9;
+  --popover-foreground: #1F1B2E;
+  --primary: #2D9C8F;
   --primary-foreground: #FFFFFF;
-  --secondary: #1E3A5F;
+  --secondary: #3D2C5C;
   --secondary-foreground: #FFFFFF;
-  --muted: #E8EFF8;
-  --muted-foreground: #5A6A7A;
-  --accent: #FFB84D;
-  --accent-foreground: #1A1A2E;
+  --muted: #EDE9F0;
+  --muted-foreground: #6B6280;
+  --accent: #F2994A;
+  --accent-foreground: #1F1B2E;
   --destructive: #DC3545;
-  --border: #D0DEF0;
-  --input: #D0DEF0;
-  --ring: #4A90D9;
-  --chart-1: #4A90D9;
-  --chart-2: #1E3A5F;
-  --chart-3: #FFB84D;
-  --chart-4: #5BA0D9;
-  --chart-5: #2E5A8F;
-  --sidebar: #E8EFF8;
-  --sidebar-foreground: #1A1A2E;
-  --sidebar-primary: #4A90D9;
+  --border: #DDD6E3;
+  --input: #DDD6E3;
+  --ring: #2D9C8F;
+  --chart-1: #2D9C8F;
+  --chart-2: #3D2C5C;
+  --chart-3: #F2994A;
+  --chart-4: #5CB8AD;
+  --chart-5: #5A3D7A;
+  --sidebar: #EDE9F0;
+  --sidebar-foreground: #1F1B2E;
+  --sidebar-primary: #2D9C8F;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #D0DEF0;
-  --sidebar-accent-foreground: #1E3A5F;
-  --sidebar-border: #D0DEF0;
-  --sidebar-ring: #4A90D9;
+  --sidebar-accent: #DDD6E3;
+  --sidebar-accent-foreground: #3D2C5C;
+  --sidebar-border: #DDD6E3;
+  --sidebar-ring: #2D9C8F;
 }
 
 .dark {
-  --background: #0F1923;
-  --foreground: #E8EFF8;
-  --card: #162230;
-  --card-foreground: #E8EFF8;
-  --popover: #162230;
-  --popover-foreground: #E8EFF8;
-  --primary: #5BA0D9;
-  --primary-foreground: #0F1923;
-  --secondary: #1E3A5F;
-  --secondary-foreground: #E8EFF8;
-  --muted: #1E2E3E;
-  --muted-foreground: #8A9AAA;
-  --accent: #FFB84D;
-  --accent-foreground: #1A1A2E;
+  --background: #151218;
+  --foreground: #EDE9F0;
+  --card: #1C1824;
+  --card-foreground: #EDE9F0;
+  --popover: #1C1824;
+  --popover-foreground: #EDE9F0;
+  --primary: #5CB8AD;
+  --primary-foreground: #151218;
+  --secondary: #5A3D7A;
+  --secondary-foreground: #EDE9F0;
+  --muted: #221E2C;
+  --muted-foreground: #9A92A8;
+  --accent: #F2994A;
+  --accent-foreground: #1F1B2E;
   --destructive: #FF6B6B;
-  --border: #2A3E50;
-  --input: #2A3E50;
-  --ring: #5BA0D9;
-  --chart-1: #5BA0D9;
-  --chart-2: #FFB84D;
-  --chart-3: #4A90D9;
-  --chart-4: #6BB0E9;
-  --chart-5: #FFB84D;
-  --sidebar: #13212E;
-  --sidebar-foreground: #E8EFF8;
-  --sidebar-primary: #5BA0D9;
-  --sidebar-primary-foreground: #0F1923;
-  --sidebar-accent: #1E3A5F;
-  --sidebar-accent-foreground: #E8EFF8;
-  --sidebar-border: #2A3E50;
-  --sidebar-ring: #5BA0D9;
+  --border: #2E2938;
+  --input: #2E2938;
+  --ring: #5CB8AD;
+  --chart-1: #5CB8AD;
+  --chart-2: #F2994A;
+  --chart-3: #2D9C8F;
+  --chart-4: #6DC7BC;
+  --chart-5: #F2994A;
+  --sidebar: #18141E;
+  --sidebar-foreground: #EDE9F0;
+  --sidebar-primary: #5CB8AD;
+  --sidebar-primary-foreground: #151218;
+  --sidebar-accent: #5A3D7A;
+  --sidebar-accent-foreground: #EDE9F0;
+  --sidebar-border: #2E2938;
+  --sidebar-ring: #5CB8AD;
 }
 
 @layer base {
@@ -211,31 +211,31 @@ html {
 }
 
 .gradient-cloudy {
-  background: #E0ECF5;
+  background: #EDE9F0;
 }
 
 .gradient-rainy {
-  background: #C8DDEF;
+  background: #D5CDE0;
 }
 
 .gradient-stormy {
-  background: #1E3A5F;
+  background: #3D2C5C;
 }
 
 .gradient-snowy {
-  background: #F0F6FC;
+  background: #F5F3F7;
 }
 
 .gradient-sunset {
-  background: #FFB84D;
+  background: #F2994A;
 }
 
 .gradient-primary {
-  background: #4A90D9;
+  background: #2D9C8F;
 }
 
 .gradient-warm {
-  background: linear-gradient(135deg, oklch(0.75 0.18 60) 0%, oklch(0.70 0.20 38) 100%);
+  background: linear-gradient(135deg, #F2994A 0%, #E07A3A 100%);
 }
 
 /* ─── Card Hover Effects ────────────────────────────────────────────────── */
@@ -343,7 +343,7 @@ html {
 /* Simple section divider */
 .section-divider {
   height: 1px;
-  background: oklch(0.91 0.008 250);
+  background: #DDD6E3;
 }
 
 /* Glow ring effect — removed */
