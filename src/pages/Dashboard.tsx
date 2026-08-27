@@ -170,13 +170,13 @@ export default function Dashboard() {
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 260, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}            className={`flex h-full flex-col border-r border-border/50 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-2xl bg-background w-72" : "bg-sidebar"}`}
+            transition={{ duration: 0.2 }}            className={`flex h-full flex-col border-r border-border/60 overflow-hidden ${isMobile ? "fixed inset-y-0 left-0 z-50 shadow-lg bg-background w-72" : "bg-sidebar"}`}
           >
             {/* Logo */}
             <div className="flex h-14 items-center justify-between border-b border-border/50 px-4">
               <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded-md gradient-primary shadow-sm">
-                  <Cloud className="h-3.5 w-3.5 text-white" />
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
+                  <Cloud className="h-3.5 w-3.5 text-primary-foreground" />
                 </div>
                 <span className="text-xs font-semibold tracking-tight text-foreground">Weather GPT</span>
               </div>
@@ -335,7 +335,7 @@ export default function Dashboard() {
       {/* ─── Main Area ────────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col">
         {/* Header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-4">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/60 bg-background px-4">
           <div className="flex items-center gap-2">
             {isMobile && !sidebarOpen && (
               <button

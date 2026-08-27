@@ -61,7 +61,7 @@ export function AnimatedStats() {
   const isInView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section ref={ref} className="py-16 sm:py-20 border-y border-border/50 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 overflow-hidden">
+    <section ref={ref} className="py-16 sm:py-20 border-y border-border/50 bg-muted/30 overflow-hidden">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="grid grid-cols-2 gap-6 sm:gap-8 sm:grid-cols-4 lg:grid-cols-8">
           {STATS.map((stat, i) => (
@@ -76,19 +76,7 @@ export function AnimatedStats() {
               }}
               className="flex flex-col items-center text-center"
             >
-              <motion.div
-                initial={{ scale: 0, rotate: -20 }}
-                animate={isInView ? { scale: 1, rotate: 0 } : {}}
-                transition={{
-                  duration: 0.5,
-                  delay: i * 0.07 + 0.15,
-                  type: "spring",
-                  stiffness: 200,
-                  damping: 15,
-                }}
-              >
-                <stat.icon className={`h-6 w-6 ${stat.color} mb-2.5`} />
-              </motion.div>
+              <stat.icon className={`h-5 w-5 text-muted-foreground mb-2`} />
               <span className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                 <AnimatedCounter target={stat.value} suffix={stat.suffix} />
               </span>

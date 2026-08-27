@@ -87,53 +87,29 @@ export function LiveDemo() {
   };
 
   return (
-    <section ref={sectionRef} className="py-20 sm:py-28 bg-gradient-to-b from-background via-muted/20 to-background">
+    <section ref={sectionRef} className="py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <div className="mx-auto max-w-2xl text-center mb-14 sm:mb-20">
-          <motion.span
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 rounded-full border border-border/40 glass px-4 py-1.5 text-sm text-muted-foreground shadow-sm mb-6"
-          >
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1 text-sm text-muted-foreground mb-5">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             Live Demo
-          </motion.span>
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight"
-          >
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
             See it in action
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mt-4 sm:mt-5 text-lg sm:text-xl leading-relaxed text-muted-foreground"
-          >
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
             Watch how Weather GPT responds to real questions about weather, agriculture, and disaster alerts.
-          </motion.p>
+          </p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 40, scale: 0.97 }}
-          whileInView={{ opacity: 1, y: 0, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.7, delay: 0.1, ease: [0.23, 1, 0.32, 1] }}
-          className="mx-auto max-w-2xl"
-        >
+        <div className="mx-auto max-w-2xl">
           {/* Chat window */}
-          <div className="rounded-2xl border border-border/40 glass shadow-2xl shadow-black/5 overflow-hidden">
+          <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border/40 px-5 sm:px-6 py-3.5">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary shadow-md shadow-primary/20">
-                  <Cloud className="h-4.5 w-4.5 text-white" />
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+                  <Cloud className="h-4 w-4 text-primary-foreground" />
                 </div>
                 <div>
                   <p className="text-sm font-bold">Weather GPT</p>
@@ -183,19 +159,18 @@ export function LiveDemo() {
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 mt-0.5">
                         <Cloud className="h-4 w-4 text-primary" />
                       </div>
-                    )}
-                    <div className={`max-w-[80%] rounded-2xl px-5 py-3.5 text-sm leading-relaxed ${
+                    )}                      <div className={`max-w-[80%] rounded-lg px-4 py-3 text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "bg-gradient-to-br from-primary to-primary/90 text-white rounded-br-md shadow-lg shadow-primary/15"
-                        : "bg-muted/50 text-foreground rounded-bl-md"
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-muted text-foreground rounded-bl-md"
                     }`}>
                       <div className="whitespace-pre-wrap break-words text-sm">
                         {msg.content}
                       </div>
                     </div>
                     {msg.role === "user" && (
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/90 mt-0.5 shadow-md">
-                        <User className="h-4 w-4 text-white" />
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary mt-0.5">
+                        <User className="h-4 w-4 text-primary-foreground" />
                       </div>
                     )}
                   </motion.div>
@@ -230,14 +205,14 @@ export function LiveDemo() {
                 <span className="text-sm text-muted-foreground/50 flex-1">Try it yourself →</span>
                 <button
                   onClick={() => window.location.href = "/auth?returnTo=/dashboard"}
-                  className="rounded-xl gradient-primary px-4 py-2 text-xs font-semibold text-white flex items-center gap-1.5 shadow-md shadow-primary/15 magnetic-btn"
+                  className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground flex items-center gap-1.5 magnetic-btn"
                 >
                   Get Started <ArrowRight className="h-3 w-3" />
                 </button>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

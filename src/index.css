@@ -123,72 +123,72 @@ html {
 
 /* CHANGE VALUES FOR THEME */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.005 250);
-  --foreground: oklch(0.13 0.02 260);
+  --radius: 0.5rem;
+  --background: oklch(0.985 0.003 250);
+  --foreground: oklch(0.18 0.015 260);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.13 0.02 260);
+  --card-foreground: oklch(0.18 0.015 260);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.02 260);
-  --primary: oklch(0.62 0.22 245);
+  --popover-foreground: oklch(0.18 0.015 260);
+  --primary: oklch(0.45 0.15 250);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.94 0.02 245);
-  --secondary-foreground: oklch(0.18 0.03 260);
-  --muted: oklch(0.95 0.01 250);
-  --muted-foreground: oklch(0.45 0.03 260);
-  --accent: oklch(0.72 0.19 155);
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.62 0.26 25);
-  --border: oklch(0.90 0.015 250);
-  --input: oklch(0.90 0.015 250);
-  --ring: oklch(0.62 0.22 245);
-  --chart-1: oklch(0.65 0.24 245);
-  --chart-2: oklch(0.70 0.22 160);
-  --chart-3: oklch(0.78 0.18 65);
-  --chart-4: oklch(0.65 0.24 310);
-  --chart-5: oklch(0.68 0.20 30);
-  --sidebar: oklch(0.97 0.008 250);
-  --sidebar-foreground: oklch(0.13 0.02 260);
-  --sidebar-primary: oklch(0.62 0.22 245);
+  --secondary: oklch(0.94 0.01 250);
+  --secondary-foreground: oklch(0.20 0.02 260);
+  --muted: oklch(0.96 0.005 250);
+  --muted-foreground: oklch(0.50 0.02 260);
+  --accent: oklch(0.94 0.01 250);
+  --accent-foreground: oklch(0.18 0.015 260);
+  --destructive: oklch(0.55 0.20 25);
+  --border: oklch(0.91 0.008 250);
+  --input: oklch(0.91 0.008 250);
+  --ring: oklch(0.45 0.15 250);
+  --chart-1: oklch(0.45 0.15 250);
+  --chart-2: oklch(0.55 0.12 160);
+  --chart-3: oklch(0.60 0.10 65);
+  --chart-4: oklch(0.50 0.14 310);
+  --chart-5: oklch(0.55 0.12 30);
+  --sidebar: oklch(0.97 0.005 250);
+  --sidebar-foreground: oklch(0.18 0.015 260);
+  --sidebar-primary: oklch(0.45 0.15 250);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.02 245);
-  --sidebar-accent-foreground: oklch(0.18 0.03 260);
-  --sidebar-border: oklch(0.90 0.015 250);
-  --sidebar-ring: oklch(0.62 0.22 245);
+  --sidebar-accent: oklch(0.94 0.01 250);
+  --sidebar-accent-foreground: oklch(0.20 0.02 260);
+  --sidebar-border: oklch(0.91 0.008 250);
+  --sidebar-ring: oklch(0.45 0.15 250);
 }
 
 .dark {
-  --background: oklch(0.13 0.015 260);
-  --foreground: oklch(0.95 0.008 250);
-  --card: oklch(0.17 0.02 260);
-  --card-foreground: oklch(0.95 0.008 250);
-  --popover: oklch(0.17 0.02 260);
-  --popover-foreground: oklch(0.95 0.008 250);
-  --primary: oklch(0.72 0.22 245);
-  --primary-foreground: oklch(0.13 0.02 260);
-  --secondary: oklch(0.22 0.03 260);
-  --secondary-foreground: oklch(0.95 0.008 250);
-  --muted: oklch(0.22 0.02 260);
-  --muted-foreground: oklch(0.68 0.03 260);
-  --accent: oklch(0.30 0.08 155);
-  --accent-foreground: oklch(0.95 0.008 250);
-  --destructive: oklch(0.72 0.24 22);
-  --border: oklch(0.28 0.025 260);
-  --input: oklch(0.28 0.025 260);
-  --ring: oklch(0.72 0.22 245);
-  --chart-1: oklch(0.72 0.24 245);
-  --chart-2: oklch(0.78 0.20 160);
-  --chart-3: oklch(0.82 0.16 65);
-  --chart-4: oklch(0.70 0.24 310);
-  --chart-5: oklch(0.75 0.20 30);
-  --sidebar: oklch(0.15 0.018 260);
-  --sidebar-foreground: oklch(0.95 0.008 250);
-  --sidebar-primary: oklch(0.72 0.22 245);
-  --sidebar-primary-foreground: oklch(0.95 0.008 250);
-  --sidebar-accent: oklch(0.24 0.04 155);
-  --sidebar-accent-foreground: oklch(0.95 0.008 250);
-  --sidebar-border: oklch(0.28 0.025 260);
-  --sidebar-ring: oklch(0.72 0.22 245);
+  --background: oklch(0.16 0.01 260);
+  --foreground: oklch(0.93 0.005 250);
+  --card: oklch(0.20 0.015 260);
+  --card-foreground: oklch(0.93 0.005 250);
+  --popover: oklch(0.20 0.015 260);
+  --popover-foreground: oklch(0.93 0.005 250);
+  --primary: oklch(0.60 0.16 250);
+  --primary-foreground: oklch(0.16 0.01 260);
+  --secondary: oklch(0.24 0.02 260);
+  --secondary-foreground: oklch(0.93 0.005 250);
+  --muted: oklch(0.24 0.015 260);
+  --muted-foreground: oklch(0.65 0.02 260);
+  --accent: oklch(0.24 0.02 260);
+  --accent-foreground: oklch(0.93 0.005 250);
+  --destructive: oklch(0.60 0.22 22);
+  --border: oklch(0.30 0.018 260);
+  --input: oklch(0.30 0.018 260);
+  --ring: oklch(0.60 0.16 250);
+  --chart-1: oklch(0.60 0.16 250);
+  --chart-2: oklch(0.65 0.14 160);
+  --chart-3: oklch(0.70 0.10 65);
+  --chart-4: oklch(0.55 0.16 310);
+  --chart-5: oklch(0.60 0.12 30);
+  --sidebar: oklch(0.18 0.012 260);
+  --sidebar-foreground: oklch(0.93 0.005 250);
+  --sidebar-primary: oklch(0.60 0.16 250);
+  --sidebar-primary-foreground: oklch(0.93 0.005 250);
+  --sidebar-accent: oklch(0.24 0.02 260);
+  --sidebar-accent-foreground: oklch(0.93 0.005 250);
+  --sidebar-border: oklch(0.30 0.018 260);
+  --sidebar-ring: oklch(0.60 0.16 250);
 }
 
 @layer base {
@@ -241,16 +241,11 @@ html {
 /* ─── Card Hover Effects ────────────────────────────────────────────────── */
 
 .card-hover {
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px -5px oklch(0.62 0.22 245 / 0.2);
-}
-
-.dark .card-hover:hover {
-  box-shadow: 0 8px 25px -5px oklch(0.72 0.22 245 / 0.3);
+  transform: translateY(-1px);
 }
 
 /* ─── Weather Icon Animations ───────────────────────────────────────────── */
@@ -284,35 +279,22 @@ html {
   will-change: transform;
 }
 
-/* 3D card tilt on hover */
+/* 3D card tilt on hover — toned down, just subtle lift */
 .card-3d {
-  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  transform-style: preserve-3d;
-  will-change: transform;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card-3d:hover {
-  transform: translateY(-6px) rotateX(2deg) rotateY(-1deg) scale(1.01);
-  box-shadow:
-    0 20px 40px -12px oklch(0.62 0.22 245 / 0.2),
-    0 8px 16px -8px oklch(0 0 0 / 0.08);
+  transform: translateY(-2px);
 }
 
-.dark .card-3d:hover {
-  box-shadow:
-    0 20px 40px -12px oklch(0.72 0.22 245 / 0.3),
-    0 8px 16px -8px oklch(0 0 0 / 0.3);
-}
-
-/* Glass morphism */
+/* Glass morphism — toned down to simple semi-transparent bg */
 .glass {
-  background: oklch(1 0 0 / 0.6);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: oklch(1 0 0 / 0.85);
 }
 
 .dark .glass {
-  background: oklch(0.18 0.015 260 / 0.6);
+  background: oklch(0.18 0.015 260 / 0.85);
 }
 
 /* Smooth scroll reveal */
@@ -345,34 +327,28 @@ html {
   animation: gradient-shift 4s ease infinite;
 }
 
-/* Magnetic hover for buttons */
+/* Button hover — simple and clean */
 .magnetic-btn {
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.3s ease;
+  transition: opacity 0.15s ease;
 }
 
 .magnetic-btn:hover {
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 12px 28px -6px oklch(0.62 0.22 245 / 0.4);
+  opacity: 0.9;
 }
 
 .magnetic-btn:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.98);
 }
 
-/* Smooth section divider line */
+/* Simple section divider */
 .section-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, oklch(0.62 0.22 245 / 0.25), transparent);
+  background: oklch(0.91 0.008 250);
 }
 
-/* Glow ring effect */
-@keyframes glow-ring {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(0.62 0.22 245 / 0); }
-  50% { box-shadow: 0 0 0 8px oklch(0.62 0.22 245 / 0.12); }
-}
-
+/* Glow ring effect — removed */
 .animate-glow-ring {
-  animation: glow-ring 3s ease-in-out infinite;
+  /* removed — keep class for compat */
 }
 
 /* Smooth page load */
@@ -391,20 +367,13 @@ html {
   animation: page-enter 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 
-/* Orb floating animation */
-@keyframes orb-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -20px) scale(1.05); }
-  66% { transform: translate(-20px, 15px) scale(0.95); }
-}
-
+/* Orb floating animation — removed for cleaner look */
 .animate-orb {
-  animation: orb-float 12s ease-in-out infinite;
+  /* removed */
 }
 
 .animate-orb-delay {
-  animation: orb-float 15s ease-in-out infinite;
-  animation-delay: -5s;
+  /* removed */
 }
 
 /* ─── Leaflet z-index fix (all screens) ────────────────────────────────── */
