@@ -129,6 +129,9 @@ const WEATHER_KEYWORDS = [
   "monsoon", "cyclone", "typhoon", "hurricane", "tornado", "flooding", "flood",
   "drought", "hail", "sleet", "drizzle", "shower", "overcast", "partly cloudy",
   "clear sky", "mist", "haze", "smog", "thunderstorm", "blizzard",
+  // Climate-related keywords
+  "climate", "climate change", "global warming", "greenhouse", "el nino", "la nina",
+  "extreme weather", "critical climate", "weather condition",
   // Hindi weather words
   "mausam", "tapman", "barish", "garmi", "thandi", "hawa", "dhund", "badal",
   "chhaon", "dhoop", "toofan", "chakravat", "sukha", "bajrapat",
@@ -181,17 +184,29 @@ function parseQuery(userMessage: string): ParsedQuery {
   isWeatherQuery = isWeatherIntent(msg);
   isGeneralQuery = isGeneralIntent(msg);
 
-  // Strategy 1: Check for known city names in the message (most reliable)
-  for (const city of INDIAN_LOCATIONS) {
-    if (msg.includes(city.toLowerCase())) {
-      location = city;
-      break;
+  // Detect if this is a knowledge/exploration question (uses question words)
+  const hasQuestionWord = /^(what|where|how|why|which|who|when|explain|tell me|describe)/i.test(msg);
+  // Detect if user is explicitly asking for weather at a specific location
+  const hasWeatherPreposition = /\b(?:weather|temperature|temp|forecast|rain|raining|snow|storm|wind|humidity|sunrise|sunset)\s+(?:in|at|for|near|of)\b/i.test(msg) ||
+    /\b(?:in|at|for|near)\s+(?:[A-Z][a-z]+|my)\b/.test(userMessage);
+  // This is a general knowledge question if it has question words
+  // and is NOT explicitly asking for weather at a location
+  const isKnowledgeQuestion = hasQuestionWord && !hasWeatherPreposition && isGeneralQuery;
+
+  // Strategy 1: Check for known city names — but NOT for knowledge questions
+  if (!isKnowledgeQuestion) {
+    for (const city of INDIAN_LOCATIONS) {
+      if (msg.includes(city.toLowerCase())) {
+        location = city;
+        break;
+      }
     }
   }
 
   // Strategy 2: Look for prepositions and extract the text after them
-  if (!location) {
-    const prepositionMatch = /(?:in|at|for|of|near|around|from|to)\s+(.+)/i.exec(userMessage);
+  // Only for weather-specific prepositions (in/at/near), not general knowledge patterns
+  if (!location && !isKnowledgeQuestion) {
+    const prepositionMatch = /(?:in|at|near|around|from|to)\s+(.+)/i.exec(userMessage);
     if (prepositionMatch) {
       let candidate = prepositionMatch[1].trim();
       candidate = candidate.replace(/[?.!,;:]+$/, "").trim();
@@ -217,7 +232,12 @@ function parseQuery(userMessage: string): ParsedQuery {
     intent = "current";
   }
 
-  // If we have a location, it's a weather query regardless of keywords
+  // If it's a knowledge question, clear any accidentally extracted location
+  if (isKnowledgeQuestion) {
+    location = null;
+  }
+
+  // If we have a location, it's a weather query
   if (location) {
     isWeatherQuery = true;
   }
@@ -448,7 +468,7 @@ function generateErrorResponse(error: string): string {
 }
 
 function generateHelpResponse(): string {
-  return `Here's what I can help you with:\n\n**🌤️ Weather Information**\n• "What's the weather in Mumbai?"\n• "Temperature in my village right now"\n• "Is it raining in London?"\n\n**📅 Forecasts**\n• "7-day forecast for Tokyo"\n• "Will it rain tomorrow in Pune?"\n• "Weather this week in Shimla"\n\n**🌾 Agriculture**\n• "Should I irrigate crops in Nagpur?"\n• "Farming conditions in Punjab"\n• "Best time to sow wheat in UP?"\n\n**⚠️ Alerts**\n• "Any cyclone alerts for Chennai?"\n• "Is it safe to fly tomorrow?"\n• "Heatwave warning in Rajasthan?"\n\n**💬 General Knowledge**\n• Ask me anything — math, science, history, cooking, travel, technology, and more!\n• "Tell me a joke"\n• "What's the capital of France?"\n• "How do I make chai?"\n\n**🗣️ Voice Input**\n• Tap the mic button and speak your question\n\nJust type your question and I'll do my best to help!`;
+  return `Here's everything I can help you with:\n\n**🌤️ Weather Information**\n• "What's the weather in Mumbai?"\n• "Temperature in my village right now"\n• "Is it raining in London?"\n\n**📅 Forecasts**\n• "7-day forecast for Tokyo"\n• "Will it rain tomorrow in Pune?"\n• "Weather this week in Shimla"\n\n**🌾 Agriculture**\n• "Should I irrigate crops in Nagpur?"\n• "Farming conditions in Punjab"\n• "Best time to sow wheat in UP?"\n\n**⚠️ Alerts**\n• "Any cyclone alerts for Chennai?"\n• "Is it safe to fly tomorrow?"\n• "Heatwave warning in Rajasthan?"\n\n**🌍 Climate & Geography**\n• "Which places have the most extreme climate?"\n• "Why do monsoons happen in India?"\n• "Explain El Niño"\n• "How is climate change affecting India?"\n\n**🧠 General Knowledge**\n• Ask me anything — math, science, history, cooking, travel, technology, sports, movies, and more!\n• "Tell me a joke"\n• "What's the capital of France?"\n• "How do I make chai?"\n• "Who won the Cricket World Cup?"\n\n**🗣️ Voice Input**\n• Tap the mic button and speak your question\n\nJust type your question and I'll do my best to help!`;
 }
 
 // ─── LLM Integration ──────────────────────────────────────────────────────
@@ -466,12 +486,13 @@ async function callLLM(userMessage: string, language: string = "en"): Promise<st
   };
   const languageName = LANGUAGE_MAP[language] || "English";
 
-  const systemPrompt = `You are Weather GPT — an intelligent, friendly AI assistant created by Team Craxzy for the Smart India Hackathon.
+  const systemPrompt = `You are Weather GPT — an exceptionally intelligent, friendly AI assistant created by Team Craxzy for the Smart India Hackathon. You are like a brilliant friend who knows everything about weather AND the world.
 
 YOUR CORE IDENTITY:
-- You are a weather intelligence platform with general knowledge capabilities
+- You are a weather intelligence platform with deep general knowledge capabilities
 - You were built to serve Indian users across all 28 states and 8 union territories
 - You support 10 Indian languages and are designed for rural accessibility
+- You are passionate about helping people understand weather, climate, and the world around them
 
 WEATHER CAPABILITIES (your primary focus):
 - Real-time weather for ANY location in India (cities, villages, towns, districts)
@@ -480,27 +501,41 @@ WEATHER CAPABILITIES (your primary focus):
 - Disaster alerts (cyclones, floods, heatwaves, cold waves, thunderstorms)
 - UV index, air quality, visibility, and atmospheric data
 - Compare weather between multiple cities
+- Explain climate patterns, monsoons, El Niño, La Niña, and global weather phenomena
+- Discuss which places have the most extreme or critical climate conditions and why
+- Explain the science behind weather events (why do cyclones form? what causes monsoons?)
 
 GENERAL KNOWLEDGE CAPABILITIES:
-- Answer ANY question the user asks — science, history, math, geography, technology, cooking, travel, sports, health, business, etc.
+- Answer ANY question the user asks — science, history, math, geography, technology, cooking, travel, sports, health, business, philosophy, space, animals, plants, music, movies, books, and everything else
 - Be helpful with everyday questions like "how do I make chai?" or "what's the best time to visit Goa?"
-- Explain concepts in simple language, especially for users who may not be tech-savvy
+- Explain complex concepts in simple language, especially for users who may not be tech-savvy
 - Provide practical advice when asked
+- Discuss current events, trending topics, and current affairs
+- Help with homework, research, and learning
+- Tell jokes, stories, riddles, and fun facts
+- Explain idioms, proverbs, and cultural references
+- Discuss climate change, global warming, and environmental issues in depth
+- Compare climates of different regions and explain why they differ
 
 COMMUNICATION STYLE:
-- Always be warm, friendly, and conversational
-- Use simple English that anyone can understand
-- Use emojis naturally to make responses engaging (🌤️ ☀️ 🌧️ ⛈️ ❄️ 💡 🌾 ⚠️)
-- Format responses with markdown for readability (bullet points, bold text)
+- Always be warm, friendly, and conversational — like chatting with a knowledgeable friend
+- Use simple, clear language that anyone can understand
+- Use emojis naturally to make responses engaging (🌤️ ☀️ 🌧️ ⛈️ ❄️ 💡 🌾 ⚠️ 🧠 💪 🎯)
+- Format responses with markdown for readability (bullet points, bold text, numbered lists)
 - If asked about weather, always provide actionable advice
+- If asked about a general topic, give a thorough, interesting, and well-organized answer
+- If the question is ambiguous, try to understand the user's intent and give the most helpful answer
 - If you don't know something, say so honestly and suggest where they might find the answer
+- Be enthusiastic and curious — show genuine interest in the user's questions
 
 IMPORTANT RULES:
 1. For weather questions — always provide specific, actionable information
-2. For general questions — be as helpful as possible with your knowledge
+2. For general questions — be as helpful as possible with your knowledge, give detailed and interesting answers
 3. Never make up weather data — if you don't have real-time data, say so
 4. Be especially helpful for farmers and rural users
 5. If the user seems confused, gently guide them
+6. For questions like "what are the critical climate conditions" or "which places have extreme weather" — give a comprehensive, interesting answer with specific examples, not a single random location
+7. Always try to give the BEST answer for what the user is actually asking, even if the question is phrased oddly
 
 LANGUAGE RULE:
 - The user has selected ${languageName} as their preferred language.
@@ -601,15 +636,23 @@ function getFallbackResponse(userMessage: string): string {
   // Identity questions
   if (/who\s*(made|created|built|are\s*you)|your\s*(name|creator|maker|team)/i.test(msg)) {
     return "I'm **Weather GPT** 🌤️ — an intelligent weather assistant built by **Team Craxzy** for the Smart India Hackathon.\n\nI can help you with:\n• Real-time weather for any location\n• 7-day forecasts\n• Agriculture advisories for farmers\n• Disaster alerts\n• General knowledge questions\n\nAsk me anything!";
-  }
-  
-  // Math
+  }  // Math
   if (/\d+\s*[+\-*/^%]\s*\d+/i.test(msg) || /calculate|math|solve/i.test(msg)) {
     return "I'd be happy to help with math! However, without the Gemini AI API key set up, I can only provide weather-related answers. Please add a **GEMINI_API_KEY** to enable full AI capabilities, or ask me about the weather! 🌤️";
   }
-  
+
+  // Climate/weather knowledge questions
+  if (/climate|monsoon|cyclone|flood|drought|heatwave|el.?ni|la.?ni|global.?warming|greenhouse/i.test(msg)) {
+    return "Great question about climate! 🌍\n\nHowever, I need the **GEMINI_API_KEY** set up to give you a detailed answer. In the meantime, I can help with:\n\n• **Real-time weather** for any location\n• **Forecasts** and conditions\n• **Agriculture advisories**\n\nTry asking: \"Weather in Mumbai\" or \"7-day forecast for Delhi\"\n\nFor the full AI experience, please add a Gemini API key in your environment variables!";
+  }
+
+  // General knowledge questions
+  if (/who|what|when|where|why|how|which|explain|tell me about|describe/i.test(msg)) {
+    return "I'd love to answer that! 🧠\n\nFor the best answers to general knowledge questions, please add a **GEMINI_API_KEY** to your environment variables. This enables my full AI brain!\n\nIn the meantime, I'm great at:\n\n• **Weather** for any location in India or worldwide\n• **7-day forecasts** with detailed breakdowns\n• **Agriculture advisories** for farmers\n• **Disaster alerts** — cyclones, floods, heatwaves\n\nWhat would you like to know?";
+  }
+
   // Default — encourage weather or general questions
-  return "I'm Weather GPT, your all-in-one weather and knowledge assistant! 🌤️\n\nI can help with:\n• **Weather** — ask about any city, village, or location\n• **Forecasts** — 7-day predictions with details\n• **Agriculture** — crop-specific weather advice\n• **Alerts** — cyclone, flood, heatwave warnings\n• **General questions** — ask me anything!\n\nWhat would you like to know?";
+  return "I'm Weather GPT, your all-in-one weather and knowledge assistant! 🌤️\n\nI can help with:\n• **Weather** — ask about any city, village, or location\n• **Forecasts** — 7-day predictions with details\n• **Agriculture** — crop-specific weather advice\n• **Alerts** — cyclone, flood, heatwave warnings\n• **General questions** — ask me anything! (requires GEMINI_API_KEY)\n• **Climate knowledge** — explain climate patterns, monsoons, and weather science\n\nJust type your question and I'll do my best to help!";
 }
 
 // ─── Chat mutation ──────────────────────────────────────────────────────────
