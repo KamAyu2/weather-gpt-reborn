@@ -872,7 +872,7 @@ export const processMessage = action({
     const parsed = parseQuery(content);
 
     // ── Route 0: Severe Weather / Critical Areas (IMD + Open-Meteo real-time) ──
-    if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*place|which.*region|worst weather|extreme|disaster|hazard|dangerous/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone|place|area|region|visit|travel/i.test(content)) {
+    if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*region|worst weather|extreme|disaster|hazard|dangerous/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone|place|area|region|warning|alerts/i.test(content)) {
       try {
         // Fetch real-time critical weather spots from Open-Meteo for all major Indian cities
         const criticalSpots: Array<{name: string; state: string; severity: string; warning: string; type: string; temperature?: number; windSpeed?: number}> = await ctx.runAction(api.weather.fetchCriticalWeatherSpots, {});
