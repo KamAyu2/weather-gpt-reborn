@@ -121,6 +121,9 @@ const EN: Record<string, string> = {
   "suggestion.uv": "UV index in Shimla today",
   "suggestion.chai": "How do I make chai?",
   "suggestion.srinagar": "Weather in Srinagar this week",
+  "suggestion.historical": "What was the weather in Delhi last month?",
+  "suggestion.nwp": "GFS forecast for Mumbai",
+  "suggestion.climate": "Climate trend in Chennai last year",
 
   // Mobile nav
   "mobile.home": "Home",

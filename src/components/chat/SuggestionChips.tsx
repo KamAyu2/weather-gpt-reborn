@@ -1,4 +1,4 @@
-import { CloudRain, MapPin, Thermometer, MessageCircle, HelpCircle, Snowflake, Sun, Sprout, AlertTriangle, Lightbulb, BookOpen } from "lucide-react";
+import { CloudRain, MapPin, Thermometer, MessageCircle, HelpCircle, Snowflake, Sun, Sprout, AlertTriangle, Lightbulb, BookOpen, History, Cpu, TrendingUp } from "lucide-react";
 import { useLanguage } from "@/lib/i18n";
 
 const SUGGESTION_KEYS = [
@@ -7,6 +7,9 @@ const SUGGESTION_KEYS = [
   { key: "suggestion.village", icon: MapPin, color: "text-emerald-500" },
   { key: "suggestion.irrigate", icon: Sprout, color: "text-green-500" },
   { key: "suggestion.cyclone", icon: AlertTriangle, color: "text-red-500" },
+  { key: "suggestion.historical", icon: History, color: "text-teal-500" },
+  { key: "suggestion.nwp", icon: Cpu, color: "text-cyan-500" },
+  { key: "suggestion.climate", icon: TrendingUp, color: "text-purple-500" },
   { key: "suggestion.joke", icon: MessageCircle, color: "text-violet-500" },
   { key: "suggestion.capital", icon: BookOpen, color: "text-indigo-500" },
   { key: "suggestion.uv", icon: Sun, color: "text-yellow-500" },

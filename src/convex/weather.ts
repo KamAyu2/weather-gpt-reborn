@@ -67,7 +67,6 @@ export const reverseGeocode = action({
   },
   handler: async (_ctx, args) => {
     try {
-      const url = `https://geocoding-api.open-meteo.com/v1/search?name=&count=1&language=en&format=json&latitude=${args.latitude}&longitude=${args.longitude}`;
       // Open-Meteo doesn't have reverse geocoding, use Nominatim
       const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?lat=${args.latitude}&lon=${args.longitude}&format=json&zoom=10`;
       const res = await fetch(nominatimUrl, {
@@ -96,8 +95,6 @@ export const findNearbyLocations = action({
     radiusKm: v.optional(v.number()),
   },
   handler: async (_ctx, args) => {
-    const radius = args.radiusKm || 100;
-    // Generate a grid of points around the user's location
     const offsets = [
       { lat: 0, lon: 0, label: "Your location" },
       { lat: 0.5, lon: 0, label: "North" },
@@ -261,5 +258,262 @@ export const fetchWeather = action({
     };
 
     return weatherData;
+  },
+});
+
+// ─── Historical Weather Data (Feature 7: Climate Trend Analysis) ─────────────
+
+export interface HistoricalWeatherData {
+  location: {
+    name: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+  };
+  period: {
+    startDate: string;
+    endDate: string;
+  };
+  daily: Array<{
+    date: string;
+    temperatureMax: number;
+    temperatureMin: number;
+    temperatureMean: number;
+    precipitationSum: number;
+    weatherCode: number;
+    windSpeedMax: number;
+  }>;
+  summary: {
+    avgTempMax: number;
+    avgTempMin: number;
+    totalPrecipitation: number;
+    hottestDay: { date: string; temp: number };
+    coldestDay: { date: string; temp: number };
+    rainyDays: number;
+    totalDays: number;
+  };
+}
+
+export const fetchHistoricalWeather = action({
+  args: {
+    latitude: v.number(),
+    longitude: v.number(),
+    locationName: v.string(),
+    country: v.string(),
+    startDate: v.string(), // YYYY-MM-DD
+    endDate: v.string(),   // YYYY-MM-DD
+  },
+  handler: async (_ctx, args) => {
+    const params = new URLSearchParams({
+      latitude: args.latitude.toString(),
+      longitude: args.longitude.toString(),
+      start_date: args.startDate,
+      end_date: args.endDate,
+      daily: [
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "temperature_2m_mean",
+        "precipitation_sum",
+        "weather_code",
+        "wind_speed_10m_max",
+      ].join(","),
+      timezone: "auto",
+    });
+
+    const url = `https://archive-api.open-meteo.com/v1/archive?${params.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Historical weather data request failed");
+    const data = await res.json();
+
+    interface DailyHistorical {
+      date: string;
+      temperatureMax: number;
+      temperatureMin: number;
+      temperatureMean: number;
+      precipitationSum: number;
+      weatherCode: number;
+      windSpeedMax: number;
+    }
+
+    const dailyData: DailyHistorical[] = data.daily.time.map((date: string, i: number) => ({
+      date,
+      temperatureMax: data.daily.temperature_2m_max[i] ?? 0,
+      temperatureMin: data.daily.temperature_2m_min[i] ?? 0,
+      temperatureMean: data.daily.temperature_2m_mean[i] ?? 0,
+      precipitationSum: data.daily.precipitation_sum[i] ?? 0,
+      weatherCode: data.daily.weather_code[i] ?? 0,
+      windSpeedMax: data.daily.wind_speed_10m_max[i] ?? 0,
+    }));
+
+    // Calculate summary stats
+    const validTemps = dailyData.filter((d: DailyHistorical) => d.temperatureMax !== null);
+    const avgTempMax = validTemps.length > 0
+      ? validTemps.reduce((sum: number, d: DailyHistorical) => sum + d.temperatureMax, 0) / validTemps.length
+      : 0;
+    const avgTempMin = validTemps.length > 0
+      ? validTemps.reduce((sum: number, d: DailyHistorical) => sum + d.temperatureMin, 0) / validTemps.length
+      : 0;
+    const totalPrecipitation = dailyData.reduce((sum: number, d: DailyHistorical) => sum + (d.precipitationSum || 0), 0);
+
+    let hottestDay = { date: "", temp: -999 };
+    let coldestDay = { date: "", temp: 999 };
+    for (const d of dailyData) {
+      if (d.temperatureMax > hottestDay.temp) hottestDay = { date: d.date, temp: d.temperatureMax };
+      if (d.temperatureMin < coldestDay.temp) coldestDay = { date: d.date, temp: d.temperatureMin };
+    }
+
+    const rainyDays = dailyData.filter((d: DailyHistorical) => (d.precipitationSum || 0) > 1).length;
+
+    return {
+      location: {
+        name: args.locationName,
+        country: args.country,
+        latitude: args.latitude,
+        longitude: args.longitude,
+      },
+      period: { startDate: args.startDate, endDate: args.endDate },
+      daily: dailyData,
+      summary: {
+        avgTempMax: Math.round(avgTempMax * 10) / 10,
+        avgTempMin: Math.round(avgTempMin * 10) / 10,
+        totalPrecipitation: Math.round(totalPrecipitation * 10) / 10,
+        hottestDay,
+        coldestDay,
+        rainyDays,
+        totalDays: dailyData.length,
+      },
+    };
+  },
+});
+
+// ─── GFS/NWP Model Forecast (Feature 3: Numerical Weather Prediction) ──────
+
+export interface NWPForecastData {
+  model: string;
+  location: {
+    name: string;
+    latitude: number;
+    longitude: number;
+  };
+  daily: Array<{
+    date: string;
+    temperatureMax: number;
+    temperatureMin: number;
+    precipitationSum: number;
+    weatherCode: number;
+    windSpeedMax: number;
+  }>;
+}
+
+export const fetchNWPForecast = action({
+  args: {
+    latitude: v.number(),
+    longitude: v.number(),
+    locationName: v.string(),
+    model: v.optional(v.string()), // "gfs_seamless", "ecmwf_ifs025", "icon_global", etc.
+  },
+  handler: async (_ctx, args) => {
+    // Open-Meteo supports multiple NWP models:
+    // gfs_seamless = GFS (NOAA) - Global Forecast System
+    // ecmwf_ifs025 = ECMWF IFS - European Centre
+    // icon_global = ICON (DWD) - German Weather Service
+    // meteofrance_seamless = Météo-France
+    // The default ensemble blends GFS + ECMWF
+    
+    const model = args.model || "gfs_seamless";
+    
+    const params = new URLSearchParams({
+      latitude: args.latitude.toString(),
+      longitude: args.longitude.toString(),
+      daily: [
+        "weather_code",
+        "temperature_2m_max",
+        "temperature_2m_min",
+        "precipitation_sum",
+        "wind_speed_10m_max",
+      ].join(","),
+      models: model,
+      timezone: "auto",
+      forecast_days: "7",
+    });
+
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`NWP model forecast request failed for ${model}`);
+    const data = await res.json();
+
+    const modelName: Record<string, string> = {
+      gfs_seamless: "GFS (NOAA Global Forecast System)",
+      ecmwf_ifs025: "ECMWF IFS (European Centre)",
+      icon_global: "ICON (DWD German Weather Service)",
+      meteofrance_seamless: "Météo-France ARPEGE/AROME",
+      ukmo_seamless: "UK Met Office",
+    };
+
+    return {
+      model: modelName[model] || model,
+      location: {
+        name: args.locationName,
+        latitude: args.latitude,
+        longitude: args.longitude,
+      },
+      daily: data.daily.time.map((date: string, i: number) => ({
+        date,
+        temperatureMax: data.daily.temperature_2m_max[i],
+        temperatureMin: data.daily.temperature_2m_min[i],
+        precipitationSum: data.daily.precipitation_sum[i],
+        weatherCode: data.daily.weather_code[i],
+        windSpeedMax: data.daily.wind_speed_10m_max[i],
+      })),
+    };
+  },
+});
+
+// ─── Multi-Model Comparison (compare GFS vs ECMWF) ─────────────────────────
+
+export const fetchMultiModelComparison = action({
+  args: {
+    latitude: v.number(),
+    longitude: v.number(),
+    locationName: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const models = ["gfs_seamless", "ecmwf_ifs025", "icon_global"];
+    
+    const results = await Promise.allSettled(
+      models.map(async (model) => {
+        const params = new URLSearchParams({
+          latitude: args.latitude.toString(),
+          longitude: args.longitude.toString(),
+          daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max",
+          models: model,
+          timezone: "auto",
+          forecast_days: "7",
+        });
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
+        if (!res.ok) throw new Error(`Failed for ${model}`);
+        const data = await res.json();
+        const modelName: Record<string, string> = {
+          gfs_seamless: "GFS (NOAA)",
+          ecmwf_ifs025: "ECMWF IFS",
+          icon_global: "ICON (DWD)",
+        };
+        return {
+          model: modelName[model] || model,
+          daily: data.daily.time.map((date: string, i: number) => ({
+            date,
+            temperatureMax: data.daily.temperature_2m_max[i],
+            temperatureMin: data.daily.temperature_2m_min[i],
+            precipitationSum: data.daily.precipitation_sum[i],
+            weatherCode: data.daily.weather_code[i],
+            windSpeedMax: data.daily.wind_speed_10m_max[i],
+          })),
+        };
+      })
+    );
+
+    return results
+      .filter((r): r is PromiseFulfilledResult<{model: string; daily: Array<{date: string; temperatureMax: number; temperatureMin: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}>}> => r.status === "fulfilled")
+      .map((r) => r.value);
   },
 });

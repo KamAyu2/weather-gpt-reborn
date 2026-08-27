@@ -200,6 +200,11 @@ function parseQuery(userMessage: string): ParsedQuery {
   isWeatherQuery = isWeatherIntent(msg);
   isGeneralQuery = isGeneralIntent(msg);
 
+  // Feature 3: Detect NWP model query intent
+  const hasNWPKeyword = /gfs|ecmwf|forecast model|weather model|nwp|numerical|prediction model|compare.*model|model.*compare/i.test(msg);
+  // Feature 7: Detect historical/climate query intent
+  const hasHistoricalKeyword = /histor|last year|last month|previous|past|climate.*trend|average.*temp|what was the weather|how was the weather|record/i.test(msg);
+
   // Detect if this is a knowledge/exploration question (uses question words)
   const hasQuestionWord = /^(what|where|how|why|which|who|when|explain|tell me|describe)/i.test(msg);
   // Detect if user is explicitly asking for weather at a specific location
@@ -589,6 +594,9 @@ CRITICAL RULES:
 7. If a question is vague, give a comprehensive answer covering the most likely intents
 8. Use tables and lists to organize information when it helps readability
 9. For recipe/travel/sports questions, give specific details, not generic overviews
+10. For climate/historical questions: provide data-backed insights about temperature trends, rainfall patterns, and seasonal changes
+11. When asked about NWP models: explain what GFS, ECMWF, ICON are and how they differ
+12. For severe weather: always include safety recommendations and actionable advice
 
 LANGUAGE RULE:
 - The user has selected ${languageName} as their preferred language.
@@ -863,7 +871,171 @@ export const processMessage = action({
     // Parse the query
     const parsed = parseQuery(content);
 
-    // ── Route 1: Has a location → fetch weather ──
+    // ── Route 1: NWP Model comparison (Feature 3) ──
+    if (/gfs|ecmwf|forecast model|weather model|nwp|numerical|model.*compare|compare.*model/i.test(content)) {
+      try {
+        // Find location for the model comparison
+        let modelName = "gfs_seamless";
+        if (/ecmwf/i.test(content)) modelName = "ecmwf_ifs025";
+        else if (/icon|dwd/i.test(content)) modelName = "icon_global";
+        else if (/meteo.?france/i.test(content)) modelName = "meteofrance_seamless";
+        else if (/compare|all/i.test(content)) modelName = "gfs_seamless"; // Will fetch multi-model
+
+        // Find location from parsed query
+        let locationName = "Mumbai";
+        if (parsed.location) {
+          locationName = parsed.location;
+        } else {
+          // Try to extract location from message
+          const locMatch = /(?:in|at|for|near)\s+([A-Za-z\s,.'-]+)/i.exec(content);
+          if (locMatch) locationName = locMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
+        }
+
+        const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: locationName });
+        if (results && results.length > 0) {
+          const best = results[0];
+          
+          if (/compare/i.test(content)) {
+            // Multi-model comparison
+            const models: Array<{model: string; daily: Array<{date: string; temperatureMax: number; temperatureMin: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}>}> = await ctx.runAction(api.weather.fetchMultiModelComparison, {
+              latitude: best.latitude, longitude: best.longitude, locationName: best.name,
+            });
+            let text = `**NWP Model Comparison for ${best.name}:**\n\n`;
+            models.forEach((m: typeof models[0]) => {
+              text += `**${m.model}:**\n`;
+              m.daily.slice(0, 3).forEach((d: typeof m.daily[0]) => {
+                text += `  ${d.date}: ${d.temperatureMax}°C / ${d.temperatureMin}°C, `;
+                if (d.precipitationSum > 0) text += `${d.precipitationSum}mm rain`;
+                else text += `dry`;
+                text += `\n`;
+              });
+              text += `\n`;
+            });
+            text += `These forecasts come from different Numerical Weather Prediction (NWP) models used by meteorological agencies worldwide.`;
+            
+            await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+            return { text, metadata: null };
+          }
+
+          // Single model forecast
+          const nwpData: {model: string; location: {name: string; latitude: number; longitude: number}; daily: Array<{date: string; temperatureMax: number; temperatureMin: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}>} = await ctx.runAction(api.weather.fetchNWPForecast, {
+            latitude: best.latitude, longitude: best.longitude, locationName: best.name, model: modelName,
+          });
+          
+          let text = `**${nwpData.model} Forecast for ${best.name}:**\n\n`;
+          nwpData.daily.forEach((d: typeof nwpData.daily[0]) => {
+            const wmo: Record<number, string> = { 0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 51: "Drizzle", 61: "Rain", 63: "Mod rain", 65: "Heavy rain", 71: "Snow", 80: "Showers", 95: "Thunderstorm" };
+            text += `**${d.date}:** ${wmo[d.weatherCode] || "Unknown"}, ${d.temperatureMax}°C / ${d.temperatureMin}°C`;
+            if (d.precipitationSum > 0) text += `, ${d.precipitationSum}mm rain`;
+            text += `\n`;
+          });
+          text += `\nPowered by ${nwpData.model} via Open-Meteo.`;
+          
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+          return { text, metadata: null };
+        }
+      } catch (error) {
+        const text = `I couldn't fetch the NWP model data. Please try again or ask about the weather directly.`;
+        await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+        return { text, metadata: null };
+      }
+    }
+
+    // ── Route 2: Historical/Climate trends (Feature 7) ──
+    if (/histor|last year|last month|previous|past.*weather|climate.*trend|average.*temp|what was the weather|how was the weather|record/i.test(content)) {
+      try {
+        let locationName = "Mumbai";
+        if (parsed.location) {
+          locationName = parsed.location;
+        } else {
+          const locMatch = /(?:in|at|for|near)\s+([A-Za-z\s,.'-]+)/i.exec(content);
+          if (locMatch) locationName = locMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
+        }
+
+        const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: locationName });
+        if (results && results.length > 0) {
+          const best = results[0];
+          
+          // Determine date range based on query
+          const now = new Date();
+          let startDate = "";
+          let endDate = "";
+          let periodLabel = "the past 30 days";
+          
+          if (/last year|past year|previous year|annual/i.test(content)) {
+            const lastYear = now.getFullYear() - 1;
+            startDate = `${lastYear}-01-01`;
+            endDate = `${lastYear}-12-31`;
+            periodLabel = `the year ${lastYear}`;
+          } else if (/last month|previous month/i.test(content)) {
+            const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+            startDate = lastMonth.toISOString().split("T")[0];
+            endDate = lastMonthEnd.toISOString().split("T")[0];
+            periodLabel = `the last month`;
+          } else if (/last week|previous week/i.test(content)) {
+            const lastWeek = new Date(now.getTime() - 14 * 86400000);
+            startDate = lastWeek.toISOString().split("T")[0];
+            endDate = new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0];
+            periodLabel = `the previous week`;
+          } else {
+            // Default: last 30 days
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+            startDate = thirtyDaysAgo.toISOString().split("T")[0];
+            endDate = now.toISOString().split("T")[0];
+            periodLabel = `the past 30 days`;
+          }
+
+          const historical = await ctx.runAction(api.weather.fetchHistoricalWeather, {
+            latitude: best.latitude,
+            longitude: best.longitude,
+            locationName: best.name,
+            country: best.country,
+            startDate,
+            endDate,
+          });
+
+          let text: string = `**Weather in ${best.name} during ${periodLabel}:**\n\n`;
+          text += `**Summary:**\n`;
+          text += `• Average High: ${historical.summary.avgTempMax}°C\n`;
+          text += `• Average Low: ${historical.summary.avgTempMin}°C\n`;
+          text += `• Total Precipitation: ${historical.summary.totalPrecipitation} mm\n`;
+          text += `• Rainy Days: ${historical.summary.rainyDays} out of ${historical.summary.totalDays} days\n`;
+          if (historical.summary.hottestDay.date) {
+            text += `• Hottest Day: ${historical.summary.hottestDay.date} (${historical.summary.hottestDay.temp}°C)\n`;
+          }
+          if (historical.summary.coldestDay.date) {
+            text += `• Coldest Day: ${historical.summary.coldestDay.date} (${historical.summary.coldestDay.temp}°C)\n`;
+          }
+          
+          text += `\n**Monthly Trend:**\n`;
+          // Group by month and show averages
+          const monthlyData: Record<string, { temps: number[]; precip: number[] }> = {};
+          historical.daily.forEach((d: {date: string; temperatureMax: number; temperatureMin: number; temperatureMean: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}) => {
+            const month = d.date.slice(0, 7);
+            if (!monthlyData[month]) monthlyData[month] = { temps: [], precip: [] };
+            monthlyData[month].temps.push(d.temperatureMax);
+            monthlyData[month].precip.push(d.precipitationSum);
+          });
+          Object.entries(monthlyData).forEach(([month, data]) => {
+            const avgTemp = (data.temps.reduce((a, b) => a + b, 0) / data.temps.length).toFixed(1);
+            const totalPrecip = data.precip.reduce((a, b) => a + b, 0).toFixed(1);
+            text += `• ${month}: Avg ${avgTemp}°C, ${totalPrecip}mm rain\n`;
+          });
+
+          text += `\nThis data is from Open-Meteo's historical weather archive. For detailed climate trend analysis, I recommend asking about specific patterns.`;
+          
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+          return { text, metadata: null };
+        }
+      } catch (error) {
+        const text = `I couldn't fetch historical weather data for that location. Please try a different city or time period.`;
+        await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+        return { text, metadata: null };
+      }
+    }
+
+    // ── Route 3: Has a location → fetch weather ──
     if (parsed.location) {
       try {
         const results = await ctx.runAction(api.weather.geocodeLocation, {
