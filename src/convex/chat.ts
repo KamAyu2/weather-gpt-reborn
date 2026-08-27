@@ -872,10 +872,10 @@ export const processMessage = action({
     const parsed = parseQuery(content);
 
     // ── Route 0: Severe Weather / Critical Areas (IMD + Open-Meteo real-time) ──
-    if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*place|which.*region|worst weather|extreme|disaster|hazard/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone/i.test(content)) {
+    if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*place|which.*region|worst weather|extreme|disaster|hazard|dangerous/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone|place|area|region|visit|travel/i.test(content)) {
       try {
         // Fetch real-time critical weather spots from Open-Meteo for all major Indian cities
-        const criticalSpots = await ctx.runAction(api.weather.fetchCriticalWeatherSpots, {});
+        const criticalSpots: Array<{name: string; state: string; severity: string; warning: string; type: string; temperature?: number; windSpeed?: number}> = await ctx.runAction(api.weather.fetchCriticalWeatherSpots, {});
         
         // Also try IMD warnings
         let imdWarnings: Array<{district: string; state: string; warningMessage: string; colorCode: number}> = [];
@@ -886,66 +886,84 @@ export const processMessage = action({
           }
         } catch { /* IMD may not always be available */ }
 
-        let text = "";
-        
         // Combine IMD warnings and Open-Meteo critical spots
-        const allCritical = [
-          ...imdWarnings.filter((w: typeof imdWarnings[0]) => w.colorCode >= 3).map((w: typeof imdWarnings[0]) => ({
-            name: w.district,
-            state: w.state,
-            severity: w.colorCode === 4 ? "red" : "orange" as const,
-            warning: w.warningMessage,
-            type: "IMD Warning",
-          })),
-          ...criticalSpots,
-        ];
+        const allCritical: Array<{name: string; state: string; severity: string; warning: string; type: string}> = [];
+        
+        // Add IMD warnings (colorCode 3=orange, 4=red)
+        for (const w of imdWarnings) {
+          if (w.colorCode >= 3 && w.district && w.warningMessage) {
+            allCritical.push({
+              name: w.district,
+              state: w.state,
+              severity: w.colorCode === 4 ? "red" : "orange",
+              warning: w.warningMessage,
+              type: "IMD Warning",
+            });
+          }
+        }
+        
+        // Add Open-Meteo critical spots
+        for (const spot of criticalSpots) {
+          if (spot.name && spot.warning && spot.severity !== "green") {
+            allCritical.push(spot);
+          }
+        }
 
         // Deduplicate by name
         const seen = new Set<string>();
-        const unique = allCritical.filter((s: typeof allCritical[0]) => {
+        const unique = allCritical.filter((s) => {
           if (seen.has(s.name)) return false;
           seen.add(s.name);
           return true;
         });
 
-        if (unique.length === 0) {
-          text = "**Current Weather Status Across India:**\n\n";
-          text += "All clear! No severe weather alerts or critical conditions detected across major Indian cities right now. ";
-          text += "Conditions are generally safe for travel and outdoor activities.\n\n";
-          text += "Stay weather-aware and check back later for updates!";
-        } else {
-          const redSpots = unique.filter((s: typeof unique[0]) => s.severity === "red");
-          const orangeSpots = unique.filter((s: typeof unique[0]) => s.severity === "orange");
-          const yellowSpots = unique.filter((s: typeof unique[0]) => s.severity === "yellow");
+        const redSpots = unique.filter((s) => s.severity === "red");
+        const orangeSpots = unique.filter((s) => s.severity === "orange");
+        const yellowSpots = unique.filter((s) => s.severity === "yellow");
 
-          text = "**Critical Weather Conditions Across India (Real-Time):**\n\n";
+        let text = "";
+        text += "**\u26a0\ufe0f Real-Time Weather Status Across India**\n\n";
 
-          if (redSpots.length > 0) {
-            text += "**RED ALERT - Immediate Danger:**\n";
-            redSpots.forEach((s: typeof redSpots[0]) => {
-              text += "- " + s.name + ", " + s.state + ": " + s.warning + "\n";
-            });
-            text += "\n";
+        // Summary stats
+        const totalAlerts = redSpots.length + orangeSpots.length + yellowSpots.length;
+        if (redSpots.length > 0) text += "**RED: " + redSpots.length + " areas** | ";
+        if (orangeSpots.length > 0) text += "**ORANGE: " + orangeSpots.length + " areas** | ";
+        if (yellowSpots.length > 0) text += "**YELLOW: " + yellowSpots.length + " areas** | ";
+        if (totalAlerts === 0) text += "**All Clear** | ";
+        text += "Scanning 40+ cities across India\n\n";
+
+        if (redSpots.length > 0) {
+          text += "**\ud83d\udd34 RED ALERT - Immediate Danger:**\n";
+          for (const s of redSpots) {
+            text += "**" + s.name + "** (" + s.state + "): " + s.warning + "\n";
           }
-
-          if (orangeSpots.length > 0) {
-            text += "**ORANGE ALERT - High Risk:**\n";
-            orangeSpots.forEach((s: typeof orangeSpots[0]) => {
-              text += "- " + s.name + ", " + s.state + ": " + s.warning + "\n";
-            });
-            text += "\n";
-          }
-
-          if (yellowSpots.length > 0) {
-            text += "**YELLOW ALERT - Moderate Risk:**\n";
-            yellowSpots.forEach((s: typeof yellowSpots[0]) => {
-              text += "- " + s.name + ", " + s.state + ": " + s.warning + "\n";
-            });
-            text += "\n";
-          }
-
-          text += "Data from IMD (India Meteorological Department) and Open-Meteo. Stay safe and follow local advisories!";
+          text += "\n";
         }
+
+        if (orangeSpots.length > 0) {
+          text += "**\ud83d\udfe0 ORANGE ALERT - High Risk:**\n";
+          for (const s of orangeSpots) {
+            text += "**" + s.name + "** (" + s.state + "): " + s.warning + "\n";
+          }
+          text += "\n";
+        }
+
+        if (yellowSpots.length > 0) {
+          text += "**\ud83d\udfe1 YELLOW ALERT - Moderate Risk:**\n";
+          for (const s of yellowSpots) {
+            text += "**" + s.name + "** (" + s.state + "): " + s.warning + "\n";
+          }
+          text += "\n";
+        }
+
+        if (totalAlerts === 0) {
+          text += "**Good news!** No critical weather conditions detected across major Indian cities right now.\n\n";
+          text += "Conditions are generally safe for travel and outdoor activities across the country.\n\n";
+        }
+
+        text += "---\n";
+        text += "*Data from Open-Meteo real-time weather API, scanning 40+ Indian cities. ";
+        text += "For the most accurate local warnings, also check [IMD](https://mausam.imd.gov.in) and [WMO Severe Weather](https://severeweather.wmo.int). Stay safe!*";
 
         await ctx.runMutation(api.chat.saveAssistantMessage, {
           conversationId: args.conversationId,
@@ -953,7 +971,7 @@ export const processMessage = action({
         });
         return { text, metadata: null };
       } catch (error) {
-        const text = "I'm having trouble fetching real-time severe weather data right now. Please try again in a moment, or ask me about the weather in a specific city.";
+        const text = "I had trouble fetching real-time severe weather data. This can happen due to network issues.\n\nPlease try again in a moment, or ask me about the weather in a specific city like \"Weather in Mumbai\" for detailed conditions.";
         await ctx.runMutation(api.chat.saveAssistantMessage, {
           conversationId: args.conversationId,
           content: text,

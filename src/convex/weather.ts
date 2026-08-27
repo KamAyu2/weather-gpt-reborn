@@ -659,101 +659,115 @@ export const fetchIMDWarnings = action({
 });
 
 // Fetch real-time critical weather spots using Open-Meteo data for major Indian cities
+// Uses individual requests per city for reliability (batch API can fail silently)
 export const fetchCriticalWeatherSpots = action({
   args: {},
   handler: async (_ctx, args) => {
     const cities = Object.entries(DISTRICT_COORDS);
-    const batchSize = 10;
     const criticalSpots: SevereWeatherSpot[] = [];
 
-    for (let i = 0; i < cities.length; i += batchSize) {
-      const batch = cities.slice(i, i + batchSize);
-      const lats = batch.map(([, c]) => c.lat).join(",");
-      const lons = batch.map(([, c]) => c.lon).join(",");
+    // Fetch all cities in parallel with a concurrency limit of 8
+    const CONCURRENCY = 8;
+    for (let i = 0; i < cities.length; i += CONCURRENCY) {
+      const batch = cities.slice(i, i + CONCURRENCY);
+      const results = await Promise.allSettled(
+        batch.map(async ([name, info]) => {
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${info.lat}&longitude=${info.lon}&current=temperature_2m,wind_speed_10m,weather_code,precipitation,relative_humidity_2m&timezone=Asia/Kolkata`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Open-Meteo failed for ${name}`);
+          const data = await res.json();
+          return { name, info, data };
+        })
+      );
 
-      try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,weather_code,precipitation&timezone=Asia/Kolkata`;
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        const data = await res.json();
-        const results = Array.isArray(data) ? data : [data];
+      for (const r of results) {
+        if (r.status !== "fulfilled") continue;
+        const { name, info, data } = r.value;
+        if (!data?.current) continue;
 
-        batch.forEach(([name, info], j) => {
-          const r = results[j];
-          if (!r?.current) return;
+        const temp = data.current.temperature_2m ?? 25;
+        const wind = data.current.wind_speed_10m ?? 0;
+        const code = data.current.weather_code ?? 0;
+        const precip = data.current.precipitation ?? 0;
+        const humidity = data.current.relative_humidity_2m ?? 50;
 
-          const temp = r.current.temperature_2m ?? 25;
-          const wind = r.current.wind_speed_10m ?? 0;
-          const code = r.current.weather_code ?? 0;
-          const precip = r.current.precipitation ?? 0;
+        let severity: "red" | "orange" | "yellow" | "green" = "green";
+        let warning = "";
+        let type = "Normal";
 
-          let severity: "red" | "orange" | "yellow" | "green" = "green";
-          let warning = "";
-          let type = "Normal";
+        // WMO Weather codes: 95=thunderstorm, 96=thunderstorm+hail, 99=heavy hail
+        // 65=heavy rain, 67=heavy freezing rain, 82=violent rain showers
+        // 75=heavy snow, 86=heavy snow showers
 
-          // Red alerts
-          if (temp >= 45) {
-            severity = "red"; type = "Extreme Heatwave";
-            warning = `Extreme heatwave at ${Math.round(temp)}°C. Danger to life.`;
-          } else if (temp <= -5) {
-            severity = "red"; type = "Severe Cold Wave";
-            warning = `Severe cold wave at ${Math.round(temp)}°C. Risk of hypothermia.`;
-          } else if (code >= 95 && code <= 99) {
-            severity = "red"; type = "Severe Thunderstorm";
-            warning = `Severe thunderstorm with ${wind > 60 ? 'damaging winds' : 'heavy rain'}. Seek shelter.`;
-          } else if (wind >= 70) {
-            severity = "red"; type = "Cyclonic Wind";
-            warning = `Dangerous winds at ${Math.round(wind)} km/h. Stay indoors.`;
-          }
-          // Orange alerts
-          else if (temp >= 42) {
-            severity = "orange"; type = "Heatwave";
-            warning = `Heatwave conditions at ${Math.round(temp)}°C. Avoid outdoor activity.`;
-          } else if (temp <= 2) {
-            severity = "orange"; type = "Cold Wave";
-            warning = `Cold wave at ${Math.round(temp)}°C. Protect crops and vulnerable people.`;
-          } else if (code >= 95) {
-            severity = "orange"; type = "Thunderstorm";
-            warning = `Thunderstorm in progress. Heavy rain and lightning possible.`;
-          } else if (precip >= 30) {
-            severity = "orange"; type = "Heavy Rain";
-            warning = `Heavy rainfall at ${precip}mm. Risk of localized flooding.`;
-          } else if (wind >= 50) {
-            severity = "orange"; type = "Strong Wind";
-            warning = `Strong winds at ${Math.round(wind)} km/h. Secure loose objects.`;
-          }
-          // Yellow alerts
-          else if (temp >= 38) {
-            severity = "yellow"; type = "Heat Stress";
-            warning = `Hot conditions at ${Math.round(temp)}°C. Stay hydrated.`;
-          } else if (temp <= 8) {
-            severity = "yellow"; type = "Cold Stress";
-            warning = `Cold conditions at ${Math.round(temp)}°C. Dress warmly.`;
-          } else if (code >= 80 && code <= 82) {
-            severity = "yellow"; type = "Rain Showers";
-            warning = `Rain showers expected. Carry an umbrella.`;
-          } else if (wind >= 35) {
-            severity = "yellow"; type = "Breezy";
-            warning = `Breezy conditions at ${Math.round(wind)} km/h.`;
-          }
+        // ── RED alerts: life-threatening ──
+        if (code >= 95 && wind >= 60) {
+          severity = "red"; type = "Severe Cyclonic Storm";
+          warning = `Cyclonic thunderstorm with ${Math.round(wind)} km/h winds. Stay indoors immediately!`;
+        } else if (temp >= 44) {
+          severity = "red"; type = "Extreme Heatwave";
+          warning = `Extreme heatwave at ${Math.round(temp)}°C. Life-threatening conditions. Avoid all outdoor activity.`;
+        } else if (temp <= -3) {
+          severity = "red"; type = "Severe Cold Wave";
+          warning = `Severe cold wave at ${Math.round(temp)}°C. Risk of hypothermia and frostbite.`;
+        } else if (wind >= 65) {
+          severity = "red"; type = "Cyclonic Wind";
+          warning = `Dangerous cyclonic winds at ${Math.round(wind)} km/h. Stay indoors, away from windows.`;
+        } else if (code === 65 || code === 67 || code === 82) {
+          severity = "red"; type = "Extreme Rainfall";
+          warning = `Violent/heavy rainfall. Risk of flash flooding and waterlogging. Avoid low-lying areas.`;
+        }
+        // ── ORANGE alerts: dangerous ──
+        else if (code >= 95) {
+          severity = "orange"; type = "Thunderstorm";
+          warning = `Active thunderstorm with ${precip > 0 ? Math.round(precip) + 'mm rain' : 'lightning and heavy rain'}. Seek shelter indoors.`;
+        } else if (temp >= 41) {
+          severity = "orange"; type = "Heatwave";
+          warning = `Heatwave at ${Math.round(temp)}°C. Avoid outdoor activity between 11 AM - 4 PM. Stay hydrated.`;
+        } else if (temp <= 5) {
+          severity = "orange"; type = "Cold Wave";
+          warning = `Cold wave at ${Math.round(temp)}°C. Protect crops and vulnerable people from frost.`;
+        } else if (precip >= 15) {
+          severity = "orange"; type = "Heavy Rain";
+          warning = `Heavy rainfall (${Math.round(precip)}mm). Possible waterlogging in low-lying areas.`;
+        } else if (wind >= 50) {
+          severity = "orange"; type = "Strong Wind";
+          warning = `Strong winds at ${Math.round(wind)} km/h. Secure loose objects and avoid trees.`;
+        }
+        // ── YELLOW alerts: caution needed ──
+        else if (temp >= 38) {
+          severity = "yellow"; type = "Heat Stress";
+          warning = `Hot at ${Math.round(temp)}°C with ${humidity}% humidity. Stay hydrated and avoid peak sun.`;
+        } else if (temp <= 10) {
+          severity = "yellow"; type = "Cold Conditions";
+          warning = `Cold at ${Math.round(temp)}°C. Dress in layers and carry warm clothing.`;
+        } else if (code >= 61 && code <= 63) {
+          severity = "yellow"; type = "Rainfall";
+          warning = `Ongoing rainfall (${precip > 0 ? Math.round(precip) + 'mm' : 'moderate'}). Carry umbrella and drive carefully.`;
+        } else if (code >= 80 && code <= 82) {
+          severity = "yellow"; type = "Rain Showers";
+          warning = `Rain showers expected. Carry an umbrella and avoid open areas.`;
+        } else if (wind >= 35) {
+          severity = "yellow"; type = "Breezy";
+          warning = `Breezy conditions at ${Math.round(wind)} km/h. Secure lightweight objects.`;
+        } else if (humidity >= 90 && temp >= 33) {
+          severity = "yellow"; type = "Humid Heat";
+          warning = `High humidity (${humidity}%) at ${Math.round(temp)}°C feels like a heatwave. Stay cool.`;
+        }
 
-          // Only add non-green spots
-          if (severity !== "green") {
-            criticalSpots.push({
-              name,
-              state: info.state,
-              latitude: info.lat,
-              longitude: info.lon,
-              severity,
-              warning,
-              type,
-              temperature: temp,
-              windSpeed: wind,
-            });
-          }
-        });
-      } catch {
-        // Skip failed batches
+        // Only add non-green spots
+        if (severity !== "green") {
+          criticalSpots.push({
+            name,
+            state: info.state,
+            latitude: info.lat,
+            longitude: info.lon,
+            severity,
+            warning,
+            type,
+            temperature: temp,
+            windSpeed: wind,
+          });
+        }
       }
     }
 
