@@ -16,7 +16,7 @@ import {
 
 import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight, Cloud, Loader2, Mail, Globe, Zap, Shield, Mic, Languages, Star } from "lucide-react";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 interface AuthProps {
@@ -34,7 +34,7 @@ function resolveRedirectAfterAuth(
 }
 
 function Auth({ redirectAfterAuth }: AuthProps = {}) {
-  const { signIn } = useAuth();
+  const { signIn, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirect = resolveRedirectAfterAuth(
@@ -82,12 +82,20 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
+  // Auto-navigate once auth state propagates after sign-in
+  useEffect(() => {
+    if (isAuthenticated && !authLoading && isLoading) {
+      setIsLoading(false);
+      navigate(redirect);
+    }
+  }, [isAuthenticated, authLoading, isLoading, navigate, redirect]);
+
   const handleGuestLogin = async () => {
-    setIsLoading(true);
     setError(null);
+    setIsLoading(true);
     try {
       await signIn("anonymous");
-      navigate(redirect);
+      // Navigation will happen via the useEffect above once auth propagates
     } catch (error) {
       console.error("Guest login error:", error);
       setError(`Failed to sign in as guest: ${error instanceof Error ? error.message : "Unknown error"}`);
