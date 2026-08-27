@@ -514,8 +514,8 @@ function generateHelpResponse(): string {
 
 // ─── LLM Integration ──────────────────────────────────────────────────────
 
-async function callLLM(userMessage: string, language: string = "en"): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY;
+async function callLLM(userMessage: string, language: string = "en", apiKeyOverride?: string): Promise<string> {
+  const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return getFallbackResponse(userMessage);
   }
@@ -853,6 +853,7 @@ export const processMessage = action({
     conversationId: v.id("conversations"),
     content: v.string(),
     language: v.optional(v.string()),
+    apiKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const content = args.content.trim();
