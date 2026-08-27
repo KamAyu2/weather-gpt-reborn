@@ -517,3 +517,250 @@ export const fetchMultiModelComparison = action({
       .map((r) => r.value);
   },
 });
+
+// ─── Severe Weather Warnings from IMD (India Meteorological Department) ─────
+
+export interface IMDWarning {
+  district: string;
+  state: string;
+  warningMessage: string;
+  colorCode: number; // 1=Green, 2=Yellow, 3=Orange, 4=Red
+  validFrom: string;
+  validUpto: string;
+  category: string;
+}
+
+export interface SevereWeatherSpot {
+  name: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  severity: "red" | "orange" | "yellow" | "green";
+  warning: string;
+  type: string; // thunderstorm, rain, heatwave, cyclone, etc.
+  temperature?: number;
+  windSpeed?: number;
+}
+
+// Indian district coordinates (major districts for mapping warnings)
+const DISTRICT_COORDS: Record<string, { lat: number; lon: number; state: string }> = {
+  "Mumbai": { lat: 19.076, lon: 72.8777, state: "Maharashtra" },
+  "Delhi": { lat: 28.6139, lon: 77.209, state: "Delhi" },
+  "Chennai": { lat: 13.0827, lon: 80.2707, state: "Tamil Nadu" },
+  "Kolkata": { lat: 22.5726, lon: 88.3639, state: "West Bengal" },
+  "Bangalore": { lat: 12.9716, lon: 77.5946, state: "Karnataka" },
+  "Hyderabad": { lat: 17.385, lon: 78.4867, state: "Telangana" },
+  "Ahmedabad": { lat: 23.0225, lon: 72.5714, state: "Gujarat" },
+  "Pune": { lat: 18.5204, lon: 73.8567, state: "Maharashtra" },
+  "Jaipur": { lat: 26.9124, lon: 75.7873, state: "Rajasthan" },
+  "Lucknow": { lat: 26.8467, lon: 80.9462, state: "Uttar Pradesh" },
+  "Bhopal": { lat: 23.2599, lon: 77.4126, state: "Madhya Pradesh" },
+  "Patna": { lat: 25.6093, lon: 85.1376, state: "Bihar" },
+  "Bhubaneswar": { lat: 20.2961, lon: 85.8245, state: "Odisha" },
+  "Guwahati": { lat: 26.1445, lon: 91.7362, state: "Assam" },
+  "Shimla": { lat: 31.1048, lon: 77.1734, state: "Himachal Pradesh" },
+  "Srinagar": { lat: 34.0837, lon: 74.7973, state: "Jammu & Kashmir" },
+  "Thiruvananthapuram": { lat: 8.5241, lon: 76.9366, state: "Kerala" },
+  "Chandigarh": { lat: 30.7333, lon: 76.7794, state: "Chandigarh" },
+  "Dehradun": { lat: 30.3165, lon: 78.0322, state: "Uttarakhand" },
+  "Ranchi": { lat: 23.3441, lon: 85.3096, state: "Jharkhand" },
+  "Raipur": { lat: 21.2514, lon: 81.6296, state: "Chhattisgarh" },
+  "Indore": { lat: 22.7196, lon: 75.8577, state: "Madhya Pradesh" },
+  "Nagpur": { lat: 21.1458, lon: 79.0882, state: "Maharashtra" },
+  "Visakhapatnam": { lat: 17.6868, lon: 83.2185, state: "Andhra Pradesh" },
+  "Coimbatore": { lat: 11.0168, lon: 76.9558, state: "Tamil Nadu" },
+  "Madurai": { lat: 9.9252, lon: 78.1198, state: "Tamil Nadu" },
+  "Kochi": { lat: 9.9312, lon: 76.2673, state: "Kerala" },
+  "Varanasi": { lat: 25.3176, lon: 82.9739, state: "Uttar Pradesh" },
+  "Amritsar": { lat: 31.634, lon: 74.8723, state: "Punjab" },
+  "Jodhpur": { lat: 26.2389, lon: 73.0243, state: "Rajasthan" },
+  "Udaipur": { lat: 24.5854, lon: 73.7125, state: "Rajasthan" },
+  "Darjeeling": { lat: 27.036, lon: 88.2627, state: "West Bengal" },
+  "Gangtok": { lat: 27.3389, lon: 88.6065, state: "Sikkim" },
+  "Imphal": { lat: 24.817, lon: 93.9368, state: "Manipur" },
+  "Shillong": { lat: 25.5788, lon: 91.8933, state: "Meghalaya" },
+  "Aizawl": { lat: 23.7271, lon: 92.7176, state: "Mizoram" },
+  "Kohima": { lat: 25.6586, lon: 94.1086, state: "Nagaland" },
+  "Itanagar": { lat: 27.1044, lon: 93.692, state: "Arunachal Pradesh" },
+  "Agartala": { lat: 23.8315, lon: 91.2868, state: "Tripura" },
+  "Panaji": { lat: 15.4909, lon: 73.8278, state: "Goa" },
+};
+
+// IMD Warning color code meanings
+const IMD_COLOR_MAP: Record<number, { label: string; severity: "red" | "orange" | "yellow" | "green"; color: string }> = {
+  1: { label: "No Warning", severity: "green", color: "#008000" },
+  2: { label: "Yellow Alert", severity: "yellow", color: "#FFFF00" },
+  3: { label: "Orange Alert", severity: "orange", color: "#FFA500" },
+  4: { label: "Red Alert", severity: "red", color: "#FF0000" },
+};
+
+export const fetchIMDWarnings = action({
+  args: {},
+  handler: async (_ctx, args) => {
+    try {
+      // Fetch district-wise warnings from IMD
+      const res = await fetch("https://api.imd.gov.in/api/v1/districtwarning", {
+        headers: { "Accept": "application/json" },
+      });
+      if (!res.ok) throw new Error("IMD API request failed");
+      const data = await res.json();
+      
+      // Parse IMD response and extract warnings
+      const warnings: IMDWarning[] = [];
+      const severeSpots: SevereWeatherSpot[] = [];
+      
+      // IMD returns data in various formats depending on the endpoint
+      // Try to parse the response
+      const records = Array.isArray(data) ? data : (data.records || data.data || []);
+      
+      for (const record of records) {
+        const district = record.District || record.district || record.station || "";
+        const state = record.State || record.state || "";
+        const message = record.Warning || record.warning || record.message || record.Cat16 || "";
+        const colorCode = parseInt(record.color || record.Color || record.colorCode || "1");
+        const validFrom = record.validFrom || record.toi || "";
+        const validUpto = record.validUpto || record.Vupto || "";
+        const category = record.Category || record.category || "";
+
+        if (district && message && colorCode >= 2) {
+          warnings.push({
+            district,
+            state,
+            warningMessage: message,
+            colorCode,
+            validFrom,
+            validUpto,
+            category,
+          });
+
+          // Map district to coordinates if we have them
+          const coords = DISTRICT_COORDS[district];
+          if (coords) {
+            const colorInfo = IMD_COLOR_MAP[colorCode] || IMD_COLOR_MAP[1];
+            severeSpots.push({
+              name: district,
+              state: coords.state,
+              latitude: coords.lat,
+              longitude: coords.lon,
+              severity: colorInfo.severity,
+              warning: message,
+              type: category || "Weather Warning",
+            });
+          }
+        }
+      }
+
+      return { warnings, severeSpots };
+    } catch (error) {
+      // If IMD API fails, return empty - we'll use Open-Meteo data as fallback
+      return { warnings: [], severeSpots: [] };
+    }
+  },
+});
+
+// Fetch real-time critical weather spots using Open-Meteo data for major Indian cities
+export const fetchCriticalWeatherSpots = action({
+  args: {},
+  handler: async (_ctx, args) => {
+    const cities = Object.entries(DISTRICT_COORDS);
+    const batchSize = 10;
+    const criticalSpots: SevereWeatherSpot[] = [];
+
+    for (let i = 0; i < cities.length; i += batchSize) {
+      const batch = cities.slice(i, i + batchSize);
+      const lats = batch.map(([, c]) => c.lat).join(",");
+      const lons = batch.map(([, c]) => c.lon).join(",");
+
+      try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}&current=temperature_2m,wind_speed_10m,weather_code,precipitation&timezone=Asia/Kolkata`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const results = Array.isArray(data) ? data : [data];
+
+        batch.forEach(([name, info], j) => {
+          const r = results[j];
+          if (!r?.current) return;
+
+          const temp = r.current.temperature_2m ?? 25;
+          const wind = r.current.wind_speed_10m ?? 0;
+          const code = r.current.weather_code ?? 0;
+          const precip = r.current.precipitation ?? 0;
+
+          let severity: "red" | "orange" | "yellow" | "green" = "green";
+          let warning = "";
+          let type = "Normal";
+
+          // Red alerts
+          if (temp >= 45) {
+            severity = "red"; type = "Extreme Heatwave";
+            warning = `Extreme heatwave at ${Math.round(temp)}°C. Danger to life.`;
+          } else if (temp <= -5) {
+            severity = "red"; type = "Severe Cold Wave";
+            warning = `Severe cold wave at ${Math.round(temp)}°C. Risk of hypothermia.`;
+          } else if (code >= 95 && code <= 99) {
+            severity = "red"; type = "Severe Thunderstorm";
+            warning = `Severe thunderstorm with ${wind > 60 ? 'damaging winds' : 'heavy rain'}. Seek shelter.`;
+          } else if (wind >= 70) {
+            severity = "red"; type = "Cyclonic Wind";
+            warning = `Dangerous winds at ${Math.round(wind)} km/h. Stay indoors.`;
+          }
+          // Orange alerts
+          else if (temp >= 42) {
+            severity = "orange"; type = "Heatwave";
+            warning = `Heatwave conditions at ${Math.round(temp)}°C. Avoid outdoor activity.`;
+          } else if (temp <= 2) {
+            severity = "orange"; type = "Cold Wave";
+            warning = `Cold wave at ${Math.round(temp)}°C. Protect crops and vulnerable people.`;
+          } else if (code >= 95) {
+            severity = "orange"; type = "Thunderstorm";
+            warning = `Thunderstorm in progress. Heavy rain and lightning possible.`;
+          } else if (precip >= 30) {
+            severity = "orange"; type = "Heavy Rain";
+            warning = `Heavy rainfall at ${precip}mm. Risk of localized flooding.`;
+          } else if (wind >= 50) {
+            severity = "orange"; type = "Strong Wind";
+            warning = `Strong winds at ${Math.round(wind)} km/h. Secure loose objects.`;
+          }
+          // Yellow alerts
+          else if (temp >= 38) {
+            severity = "yellow"; type = "Heat Stress";
+            warning = `Hot conditions at ${Math.round(temp)}°C. Stay hydrated.`;
+          } else if (temp <= 8) {
+            severity = "yellow"; type = "Cold Stress";
+            warning = `Cold conditions at ${Math.round(temp)}°C. Dress warmly.`;
+          } else if (code >= 80 && code <= 82) {
+            severity = "yellow"; type = "Rain Showers";
+            warning = `Rain showers expected. Carry an umbrella.`;
+          } else if (wind >= 35) {
+            severity = "yellow"; type = "Breezy";
+            warning = `Breezy conditions at ${Math.round(wind)} km/h.`;
+          }
+
+          // Only add non-green spots
+          if (severity !== "green") {
+            criticalSpots.push({
+              name,
+              state: info.state,
+              latitude: info.lat,
+              longitude: info.lon,
+              severity,
+              warning,
+              type,
+              temperature: temp,
+              windSpeed: wind,
+            });
+          }
+        });
+      } catch {
+        // Skip failed batches
+      }
+    }
+
+    // Sort by severity (red first, then orange, then yellow)
+    const severityOrder = { red: 0, orange: 1, yellow: 2, green: 3 };
+    criticalSpots.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    return criticalSpots;
+  },
+});

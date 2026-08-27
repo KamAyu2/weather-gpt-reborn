@@ -871,6 +871,97 @@ export const processMessage = action({
     // Parse the query
     const parsed = parseQuery(content);
 
+    // ── Route 0: Severe Weather / Critical Areas (IMD + Open-Meteo real-time) ──
+    if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*place|which.*region|worst weather|extreme|disaster|hazard/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone/i.test(content)) {
+      try {
+        // Fetch real-time critical weather spots from Open-Meteo for all major Indian cities
+        const criticalSpots = await ctx.runAction(api.weather.fetchCriticalWeatherSpots, {});
+        
+        // Also try IMD warnings
+        let imdWarnings: Array<{district: string; state: string; warningMessage: string; colorCode: number}> = [];
+        try {
+          const imdData = await ctx.runAction(api.weather.fetchIMDWarnings, {});
+          if (imdData.warnings && imdData.warnings.length > 0) {
+            imdWarnings = imdData.warnings;
+          }
+        } catch { /* IMD may not always be available */ }
+
+        let text = "";
+        
+        // Combine IMD warnings and Open-Meteo critical spots
+        const allCritical = [
+          ...imdWarnings.filter((w: typeof imdWarnings[0]) => w.colorCode >= 3).map((w: typeof imdWarnings[0]) => ({
+            name: w.district,
+            state: w.state,
+            severity: w.colorCode === 4 ? "red" : "orange" as const,
+            warning: w.warningMessage,
+            type: "IMD Warning",
+          })),
+          ...criticalSpots,
+        ];
+
+        // Deduplicate by name
+        const seen = new Set<string>();
+        const unique = allCritical.filter((s: typeof allCritical[0]) => {
+          if (seen.has(s.name)) return false;
+          seen.add(s.name);
+          return true;
+        });
+
+        if (unique.length === 0) {
+          text = "**Current Weather Status Across India:**\n\n";
+          text += "All clear! No severe weather alerts or critical conditions detected across major Indian cities right now. ";
+          text += "Conditions are generally safe for travel and outdoor activities.\n\n";
+          text += "Stay weather-aware and check back later for updates!";
+        } else {
+          const redSpots = unique.filter((s: typeof unique[0]) => s.severity === "red");
+          const orangeSpots = unique.filter((s: typeof unique[0]) => s.severity === "orange");
+          const yellowSpots = unique.filter((s: typeof unique[0]) => s.severity === "yellow");
+
+          text = "**Critical Weather Conditions Across India (Real-Time):**\n\n";
+
+          if (redSpots.length > 0) {
+            text += "**RED ALERT - Immediate Danger:**\n";
+            redSpots.forEach((s: typeof redSpots[0]) => {
+              text += "- " + s.name + ", " + s.state + ": " + s.warning + "\n";
+            });
+            text += "\n";
+          }
+
+          if (orangeSpots.length > 0) {
+            text += "**ORANGE ALERT - High Risk:**\n";
+            orangeSpots.forEach((s: typeof orangeSpots[0]) => {
+              text += "- " + s.name + ", " + s.state + ": " + s.warning + "\n";
+            });
+            text += "\n";
+          }
+
+          if (yellowSpots.length > 0) {
+            text += "**YELLOW ALERT - Moderate Risk:**\n";
+            yellowSpots.forEach((s: typeof yellowSpots[0]) => {
+              text += "- " + s.name + ", " + s.state + ": " + s.warning + "\n";
+            });
+            text += "\n";
+          }
+
+          text += "Data from IMD (India Meteorological Department) and Open-Meteo. Stay safe and follow local advisories!";
+        }
+
+        await ctx.runMutation(api.chat.saveAssistantMessage, {
+          conversationId: args.conversationId,
+          content: text,
+        });
+        return { text, metadata: null };
+      } catch (error) {
+        const text = "I'm having trouble fetching real-time severe weather data right now. Please try again in a moment, or ask me about the weather in a specific city.";
+        await ctx.runMutation(api.chat.saveAssistantMessage, {
+          conversationId: args.conversationId,
+          content: text,
+        });
+        return { text, metadata: null };
+      }
+    }
+
     // ── Route 1: NWP Model comparison (Feature 3) ──
     if (/gfs|ecmwf|forecast model|weather model|nwp|numerical|model.*compare|compare.*model/i.test(content)) {
       try {

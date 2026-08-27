@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
 import { ThermalMap } from "@/components/weather/ThermalMap";
+import { SevereWeatherMap } from "@/components/weather/SevereWeatherMap";
 import { useLanguage } from "@/lib/i18n";
 import type { WeatherData } from "@/convex/weather";
 
@@ -247,6 +248,19 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               </p>
             </button>
           )}
+        </motion.div>
+
+        {/* ─── Severe Weather Monitor ────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mt-10"
+        >
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Severe Weather Monitor
+          </h2>
+          <SevereWeatherMap />
         </motion.div>
 
         {/* ─── Thermal Map ────────────────────────────────────────────── */}
