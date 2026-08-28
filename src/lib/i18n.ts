@@ -389,6 +389,7 @@ export function t(key: string, lang: Language = "en"): string {
 // ─── Language Context (shared state across all components) ─────────────────
 
 import { useState, useEffect, createContext, useContext, useCallback, type ReactNode } from "react";
+import React from "react";
 
 interface LanguageContextValue {
   language: Language;
@@ -414,11 +415,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const translate = useCallback((key: string) => t(key, language), [language]);
 
-  return (
-    <LanguageContext.Provider value={{ language, setLanguage, translate, languages: LANGUAGES }}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  const value: LanguageContextValue = { language, setLanguage, translate, languages: LANGUAGES };
+  return React.createElement(LanguageContext.Provider, { value }, children);
 }
 
 export function useLanguage(): LanguageContextValue {
