@@ -1085,20 +1085,62 @@ export const processMessage = action({
           return true;
         });
 
-        const redSpots = unique.filter((s) => s.severity === "red");
-        const orangeSpots = unique.filter((s) => s.severity === "orange");
-        const yellowSpots = unique.filter((s) => s.severity === "yellow");
+        // Filter by location if user mentioned one (e.g. "cyclone alerts for Chennai")
+        let filteredSpots = unique;
+        const queryLocation = parsed.location || null;
+        if (queryLocation) {
+          const locLower = queryLocation.toLowerCase();
+          filteredSpots = unique.filter((s) => {
+            const nameMatch = s.name.toLowerCase().includes(locLower);
+            const stateMatch = s.state && s.state.toLowerCase().includes(locLower);
+            return nameMatch || stateMatch;
+          });
+        }
+
+        const redSpots = filteredSpots.filter((s) => s.severity === "red");
+        const orangeSpots = filteredSpots.filter((s) => s.severity === "orange");
+        const yellowSpots = filteredSpots.filter((s) => s.severity === "yellow");
 
         let text = "";
-        text += "**\u26a0\ufe0f Real-Time Weather Status Across India**\n\n";
+        if (queryLocation) {
+          const locCap = queryLocation.charAt(0).toUpperCase() + queryLocation.slice(1);
+          text += "**\u26a0\ufe0f Weather Alerts for " + locCap + "**\n\n";
+        } else {
+          text += "**\u26a0\ufe0f Real-Time Weather Status Across India**\n\n";
+        }
 
         // Summary stats
         const totalAlerts = redSpots.length + orangeSpots.length + yellowSpots.length;
-        if (redSpots.length > 0) text += "**RED: " + redSpots.length + " areas** | ";
-        if (orangeSpots.length > 0) text += "**ORANGE: " + orangeSpots.length + " areas** | ";
-        if (yellowSpots.length > 0) text += "**YELLOW: " + yellowSpots.length + " areas** | ";
-        if (totalAlerts === 0) text += "**All Clear** | ";
-        text += "Scanning 40+ cities across India\n\n";
+        if (queryLocation) {
+          if (totalAlerts === 0) {
+            const locCap = queryLocation.charAt(0).toUpperCase() + queryLocation.slice(1);
+            text += "No active severe weather alerts found specifically for **" + locCap + "** right now.\n\n";
+            // Show broader context if alerts exist elsewhere
+            const allRedSpots = unique.filter((s) => s.severity === "red");
+            const allOrangeSpots = unique.filter((s) => s.severity === "orange");
+            const allYellowSpots = unique.filter((s) => s.severity === "yellow");
+            const allTotal = allRedSpots.length + allOrangeSpots.length + allYellowSpots.length;
+            if (allTotal > 0) {
+              text += "**However, here are active alerts across India that may be relevant:**\n\n";
+              for (const s of [...allRedSpots, ...allOrangeSpots, ...allYellowSpots]) {
+                const icon = s.severity === "red" ? "\ud83d\udd34" : s.severity === "orange" ? "\ud83d\udfe0" : "\ud83d\udfe1";
+                text += icon + " **" + s.name + "** (" + s.state + "): " + s.warning + "\n";
+              }
+              text += "\n";
+            }
+          } else {
+            if (redSpots.length > 0) text += "**RED: " + redSpots.length + " alert(s)** | ";
+            if (orangeSpots.length > 0) text += "**ORANGE: " + orangeSpots.length + " alert(s)** | ";
+            if (yellowSpots.length > 0) text += "**YELLOW: " + yellowSpots.length + " alert(s)** | ";
+            text += "\n";
+          }
+        } else {
+          if (redSpots.length > 0) text += "**RED: " + redSpots.length + " areas** | ";
+          if (orangeSpots.length > 0) text += "**ORANGE: " + orangeSpots.length + " areas** | ";
+          if (yellowSpots.length > 0) text += "**YELLOW: " + yellowSpots.length + " areas** | ";
+          if (totalAlerts === 0) text += "**All Clear** | ";
+          text += "Scanning 40+ cities across India\n\n";
+        }
 
         if (redSpots.length > 0) {
           text += "**\ud83d\udd34 RED ALERT - Immediate Danger:**\n";
@@ -1124,7 +1166,7 @@ export const processMessage = action({
           text += "\n";
         }
 
-        if (totalAlerts === 0) {
+        if (!queryLocation && totalAlerts === 0) {
           text += "**Good news!** No critical weather conditions detected across major Indian cities right now.\n\n";
           text += "Conditions are generally safe for travel and outdoor activities across the country.\n\n";
         }
