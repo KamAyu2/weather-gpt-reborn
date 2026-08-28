@@ -386,28 +386,55 @@ export function t(key: string, lang: Language = "en"): string {
   return TRANSLATIONS[lang]?.[key] || TRANSLATIONS.en[key] || key;
 }
 
-// ─── Language Hook ─────────────────────────────────────────────────────────
+// ─── Language Context (shared state across all components) ─────────────────
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext, useCallback, type ReactNode } from "react";
 
-export function useLanguage() {
-  const [language, setLanguage] = useState<Language>(() => {
+interface LanguageContextValue {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  translate: (key: string) => string;
+  languages: typeof LANGUAGES;
+}
+
+const LanguageContext = createContext<LanguageContextValue | null>(null);
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("weather-chat-lang") as Language) || "en";
     }
     return "en";
   });
 
-  useEffect(() => {
-    localStorage.setItem("weather-chat-lang", language);
-  }, [language]);
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem("weather-chat-lang", lang);
+  }, []);
 
-  const translate = (key: string) => t(key, language);
+  const translate = useCallback((key: string) => t(key, language), [language]);
 
-  return {
-    language,
-    setLanguage,
-    translate,
-    languages: LANGUAGES,
-  };
+  return (
+    <LanguageContext.Provider value={{ language, setLanguage, translate, languages: LANGUAGES }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage(): LanguageContextValue {
+  const ctx = useContext(LanguageContext);
+  if (ctx) return ctx;
+  // Fallback for components used outside the provider (e.g. in tests)
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("weather-chat-lang") as Language) || "en";
+    }
+    return "en";
+  });
+  const setLanguage = useCallback((lang: Language) => {
+    setLanguageState(lang);
+    localStorage.setItem("weather-chat-lang", lang);
+  }, []);
+  const translate = useCallback((key: string) => t(key, language), [language]);
+  return { language, setLanguage, translate, languages: LANGUAGES };
 }

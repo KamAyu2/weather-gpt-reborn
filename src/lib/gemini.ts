@@ -73,7 +73,8 @@ export async function callGeminiFromClient(
     });
 
     if (!response.ok) {
-      console.error("Gemini client API error:", response.status);
+      const errorBody = await response.text().catch(() => "unknown");
+      console.error("Gemini client API error:", response.status, errorBody);
       return null;
     }
 

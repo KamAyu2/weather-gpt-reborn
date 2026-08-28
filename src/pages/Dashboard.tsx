@@ -119,6 +119,7 @@ export default function Dashboard() {
         const llmKey = geminiKey || localStorage.getItem("gemini_api_key") || "";
         if (llmKey) {
           const llmResponse = await callGeminiFromClient(text, language, llmKey);
+          console.log('[WeatherGPT] LLM response:', llmResponse ? 'success' : 'null', 'keyLen:', llmKey.length, 'lang:', language);
           if (llmResponse) {
             await saveAssistantMessage({
               conversationId: convId,

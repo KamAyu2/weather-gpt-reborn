@@ -198,9 +198,17 @@ function parseQuery(userMessage: string): ParsedQuery {
   let isWeatherQuery = false;
   let isGeneralQuery = false;
 
+  // Check if message contains non-Latin characters (Hindi, Tamil, etc.)
+  // If so, treat as general query and send to LLM directly
+  const hasNonLatinChars = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0B00-\u0B7F\u0C00-\u0C7F\u0D00-\u0D7F\u0B80-\u0BFF]/.test(userMessage);
+  if (hasNonLatinChars && msg.length > 2) {
+    // Non-English text — always route to LLM for best answers
+    isGeneralQuery = true;
+  }
+
   // Check weather keywords
   isWeatherQuery = isWeatherIntent(msg);
-  isGeneralQuery = isGeneralIntent(msg);
+  if (!isGeneralQuery) isGeneralQuery = isGeneralIntent(msg);
 
   // Feature 3: Detect NWP model query intent
   const hasNWPKeyword = /gfs|ecmwf|forecast model|weather model|nwp|numerical|prediction model|compare.*model|model.*compare/i.test(msg);
