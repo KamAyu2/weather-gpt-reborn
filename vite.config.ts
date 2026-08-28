@@ -84,7 +84,6 @@ export default defineConfig({
       'react-dom/client',
       'react-router',
       '@convex-dev/auth/react',
-      'framer-motion',
     ],
   },
   // Performance hints

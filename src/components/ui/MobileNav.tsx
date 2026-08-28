@@ -58,7 +58,7 @@ export function MobileNav({ currentView, onViewChange, onNewChat, starredCount =
                     </span>
                   )}
                 </div>
-                <span className={`text-[10px] font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                <span className={`text-xs font-medium transition-colors ${isActive ? "text-primary" : "text-muted-foreground"}`}>
                   {label}
                 </span>
               </button>

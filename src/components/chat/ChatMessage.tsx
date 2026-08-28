@@ -121,7 +121,7 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
             
             {/* Conversational follow-up */}
             {conversationalText && (
-              <div className="rounded-2xl bg-muted/50 px-4 py-3 text-sm leading-relaxed text-foreground rounded-bl-md">
+              <div className="rounded-2xl bg-muted/50 px-4 py-3 text-base leading-relaxed text-foreground rounded-bl-md">
                 <div className="whitespace-pre-wrap break-words">
                   {parseMarkdown(conversationalText)}
                 </div>
@@ -131,7 +131,7 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
         ) : (
           /* ─── Text Message ────────────────────────────────────────────── */
           <div
-            className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+            className={`rounded-2xl px-4 py-3 text-base leading-relaxed ${
               isUser
                 ? "bg-gradient-to-br from-primary to-primary/90 text-white rounded-br-md shadow-sm"
                 : "bg-muted/50 text-foreground rounded-bl-md"

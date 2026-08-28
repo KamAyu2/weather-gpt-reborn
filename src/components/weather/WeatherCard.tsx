@@ -50,10 +50,10 @@ function StatItem({ icon: Icon, label, value, sub }: { icon: React.ElementType; 
     <div className="flex flex-col gap-1 bg-muted/30 rounded-xl p-2.5">
       <div className="flex items-center gap-1.5 text-foreground/50">
         <Icon className="h-3 w-3" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
       </div>
       <span className="text-sm font-semibold tracking-tight text-foreground">{value}</span>
-      {sub && <span className="text-[10px] text-foreground/50 font-medium">{sub}</span>}
+      {sub &&        <span className="text-xs text-foreground/50 font-medium">{sub}</span>}
     </div>
   );
 }
@@ -87,7 +87,7 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
     <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 p-5 shadow-md">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-[11px] text-muted-foreground font-medium">{location.name}, {location.country}</p>
+          <p className="text-sm text-muted-foreground font-medium">{location.name}, {location.country}</p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-3xl font-semibold tracking-tight text-foreground drop-shadow-sm">{Math.round(current.temperature)}</span>
             <span className="text-lg font-medium text-foreground/70">°C</span>

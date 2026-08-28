@@ -60,8 +60,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col">
       {/* ─── Navigation ─────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-sm safe-area-top">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+      <header role="banner" className="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-background/90 backdrop-blur-sm safe-area-top">
+      <nav aria-label="Main navigation" className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Cloud className="h-4 w-4 text-primary-foreground" />
@@ -84,9 +84,11 @@ export default function Landing() {
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
           </div>
-        </div>
       </nav>
+      </header>
 
+      {/* ─── Main Content ──────────────────────────────────────────────── */}
+      <main role="main" id="main-content">
       {/* ─── Hero ───────────────────────────────────────────────────────── */}
       <AnimatedHero />
 
@@ -162,8 +164,10 @@ export default function Landing() {
         </div>
       </section>
 
+      </main>
+
       {/* ─── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border/60 py-8 bg-muted/20 safe-area-bottom">
+      <footer role="contentinfo" className="border-t border-border/60 py-8 bg-muted/20 safe-area-bottom">
         <div className="mx-auto max-w-6xl px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">

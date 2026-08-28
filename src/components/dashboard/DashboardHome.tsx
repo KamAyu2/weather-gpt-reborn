@@ -184,7 +184,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
                   <Sprout className="h-4 w-4 text-green-600" />
                   <span className="text-xs font-medium">{translate("agri.title")}</span>
                 </div>
-                <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                <div className="space-y-1.5 text-sm text-muted-foreground leading-relaxed">
                   {weatherData.current.temperature >= 35 && (
                     <p>• {translate("agri.heatStress")}</p>
                   )}
@@ -212,7 +212,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
                   <AlertTriangle className="h-4 w-4 text-amber-600" />
                   <span className="text-xs font-medium">{translate("disaster.title")}</span>
                 </div>
-                <div className="space-y-1.5 text-[11px] text-muted-foreground leading-relaxed">
+                <div className="space-y-1.5 text-sm text-muted-foreground leading-relaxed">
                   {weatherData.current.temperature >= 42 && (
                     <p>• ⛔ {translate("disaster.extremeHeat")}</p>
                   )}

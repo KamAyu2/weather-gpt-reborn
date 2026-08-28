@@ -219,10 +219,10 @@ export default function Dashboard() {
             </div>
 
             {/* Navigation */}
-            <div className="px-2 pt-3 space-y-0.5">
+            <nav aria-label="Sidebar navigation" className="px-2 pt-3 space-y-0.5">
               <button
                 onClick={handleGoHome}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                   view === "home"
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -233,7 +233,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={handleNewConversation}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                   view === "chat" && !activeConversation
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -244,7 +244,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => setView("compare")}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                   view === "compare"
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -255,7 +255,7 @@ export default function Dashboard() {
               </button>
               <button
                 onClick={() => setView("starred")}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors ${
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
                   view === "starred"
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -273,7 +273,7 @@ export default function Dashboard() {
               {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
               >
                 {currentTheme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
                 {currentTheme === "dark" ? translate("nav.lightMode") : translate("nav.darkMode")}
@@ -282,7 +282,7 @@ export default function Dashboard() {
               {/* Language Selector — hover dropdown */}
               <div className="relative" onMouseEnter={() => setLangOpen(true)} onMouseLeave={() => setLangOpen(false)}>
                 <button
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
                 >
                   <Globe className="h-3.5 w-3.5" />
                   <span>{LANGUAGES[language]?.flag} {LANGUAGES[language]?.native || "English"}</span>
@@ -317,7 +317,7 @@ export default function Dashboard() {
                   )}
                 </AnimatePresence>
               </div>
-            </div>
+            </nav>
 
             {/* Conversations */}
             <div className="mt-2 border-t border-border/50 pt-2 flex-1 overflow-y-auto px-2">
@@ -328,7 +328,7 @@ export default function Dashboard() {
                 <button
                   key={conv._id}
                   onClick={() => handleSelectConversation(conv._id)}
-                  className={`w-full truncate rounded-lg px-3 py-2 text-left text-xs transition-colors ${
+                  className={`w-full truncate rounded-lg px-3 py-2 text-left text-sm transition-colors ${
                     activeConversation === conv._id && view === "chat"
                       ? "bg-muted text-foreground"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -367,7 +367,7 @@ export default function Dashboard() {
       {/* ─── Main Area ────────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col">
         {/* Header */}
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border/60 bg-background px-4">
+        <header role="banner" aria-label="Dashboard header" className="flex h-14 shrink-0 items-center justify-between border-b border-border/60 bg-background px-4">
           <div className="flex items-center gap-2">
             {isMobile && !sidebarOpen && (
               <button
@@ -430,7 +430,7 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
+        <main role="main" className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             {view === "home" && (
               <motion.div
@@ -599,7 +599,7 @@ export default function Dashboard() {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </main>
 
         {/* Mobile Bottom Nav */}
         {isMobile && (

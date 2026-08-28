@@ -55,7 +55,7 @@ export function ChatInput({
             placeholder={placeholder}
             disabled={disabled || isLoading}
             rows={1}
-            className="max-h-40 min-h-[24px] flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            className="max-h-40 min-h-[24px] flex-1 resize-none bg-transparent text-base text-foreground placeholder:text-muted-foreground/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           />
           <button
             onClick={onSubmit}
