@@ -93,7 +93,7 @@ const INDIAN_CITY_NAMES = new Set([
   "agra","nashik","faridabad","meerut","rajkot","varanasi",
 ]);
 
-function preferIndianResult(results: Array<{name: string; country?: string; country_code?: string; admin1?: string; latitude?: number; longitude?: number}>, query: string): typeof results[0] | null {
+function preferIndianResult(results: Array<{name: string; country: string; country_code?: string; admin1?: string; latitude: number; longitude: number; timezone: string}>, query: string): {name: string; country: string; country_code?: string; admin1?: string; latitude: number; longitude: number; timezone: string} | null {
   if (!results || results.length === 0) return null;
   const q = query.toLowerCase().trim();
   // If querying an Indian city name, prefer results with country_code IN
@@ -673,6 +673,23 @@ export const processMessage = action({
         let resolvedStage = agriCtx.cropStage;
         const msgLower = content.toLowerCase().trim();
 
+        // Extract crop/stage from current message if not yet known
+        if (!resolvedCrop) {
+          for (const cn of CROP_NAMES) { if (msgLower.includes(cn)) { resolvedCrop = cn.charAt(0).toUpperCase() + cn.slice(1); break; } }
+        }
+        if (!resolvedStage) {
+          for (const cs of CROP_STAGES) { if (msgLower.includes(cs)) { resolvedStage = cs.charAt(0).toUpperCase() + cs.slice(1); break; } }
+        }
+        // Also try compound patterns like "grow rice", "growing wheat"
+        if (!resolvedCrop) {
+          const growMatch = /(?:grow|growing|cultivat|plant|sow|farm|raise)\s+(\w+)/i.exec(content);
+          if (growMatch) {
+            const candidate = growMatch[1].toLowerCase();
+            const foundCrop = CROP_NAMES.find(c => c === candidate || candidate.includes(c));
+            if (foundCrop) resolvedCrop = foundCrop.charAt(0).toUpperCase() + foundCrop.slice(1);
+          }
+        }
+
         // Compound: "Pune, soybean, flowering"
         if (!resolvedLocation && !resolvedCrop && content.includes(",")) {
           const parts = content.split(",").map(p => p.trim());
@@ -841,7 +858,7 @@ export const processMessage = action({
           try {
             const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: locName });
             if (results && results.length > 0) {
-              const best = results[0];
+              const best = preferIndianResult(results, locName) || results[0];
               const fw: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, { latitude: best.latitude, longitude: best.longitude, locationName: best.name, country: best.country, timezone: best.timezone || "auto" });
               const response = /tomorrow|week|7.day/i.test(content) ? generateForecastResponse(fw, content) : generateCurrentResponse(fw, content);
               await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: response.text, metadata: response.metadata as any });
@@ -970,11 +987,11 @@ export const processMessage = action({
       try {
         const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: parsed.location });
         if (!results || results.length === 0) {
-          const text = await callLLM(content, lang, args.apiKey);
+          const text = "I could not find \"" + parsed.location + "\". Please try a different city or place name.";
           await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
           return { text, metadata: null };
         }
-        const best = results[0];
+        const best = preferIndianResult(results, parsed.location) || results[0];
         const weatherData: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, { latitude: best.latitude, longitude: best.longitude, locationName: best.name, country: best.country, timezone: best.timezone || "auto" });
         const response: { text: string; metadata: { location: string; country: string; latitude: number; longitude: number; weatherData: import("./weather").WeatherData } } = parsed.intent === "forecast" ? generateForecastResponse(weatherData, content) : generateCurrentResponse(weatherData, content);
         await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: response.text, metadata: response.metadata as any });
@@ -986,8 +1003,10 @@ export const processMessage = action({
       }
     }
 
-    // Fallback: signal client-side LLM for general questions
-    return { text: null, metadata: null, useClientLLM: true };
+    // Fallback: deterministic response for general questions
+    const fallbackText = "I am here to help with weather, forecasts, alerts, and agriculture advice. What would you like to know?\n\n**Try asking:**\n- \"Weather in Mumbai\"\n- \"7-day forecast for Delhi\"\n- \"Any cyclone alerts for Chennai?\"\n- \"Where are the critical weather conditions?\"\n- \"Should I irrigate crops today?\"";
+    await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: fallbackText });
+    return { text: fallbackText, metadata: null };
   },
 });
 
