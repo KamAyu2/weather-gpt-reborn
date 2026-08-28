@@ -7,6 +7,7 @@ import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
 import { ThermalMap } from "@/components/weather/ThermalMap";
 import { SevereWeatherMap } from "@/components/weather/SevereWeatherMap";
+import { AdvancedAgriAdvisory } from "@/components/weather/AdvancedAgriAdvisory";
 import { useLanguage } from "@/lib/i18n";
 import type { WeatherData } from "@/convex/weather";
 
@@ -178,33 +179,8 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
             <div className="space-y-3">
               <WeatherCardCompact weatherData={weatherData} />
               
-              {/* Agriculture Advisory */}
-              <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-green-50/80 to-emerald-50/80 dark:from-green-950/30 dark:to-emerald-950/30 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sprout className="h-4 w-4 text-green-600" />
-                  <span className="text-xs font-medium">{translate("agri.title")}</span>
-                </div>
-                <div className="space-y-1.5 text-sm text-muted-foreground leading-relaxed">
-                  {weatherData.current.temperature >= 35 && (
-                    <p>• {translate("agri.heatStress")}</p>
-                  )}
-                  {weatherData.current.temperature <= 10 && (
-                    <p>• {translate("agri.frostRisk")}</p>
-                  )}
-                  {weatherData.daily[0]?.precipitationProbabilityMax > 50 && (
-                    <p>• {translate("agri.delayPesticide")}</p>
-                  )}
-                  {weatherData.current.humidity > 80 && (
-                    <p>• {translate("agri.highHumidity")}</p>
-                  )}
-                  {weatherData.current.windSpeed > 25 && (
-                    <p>• {translate("agri.strongWinds")}</p>
-                  )}
-                  {weatherData.current.temperature >= 15 && weatherData.current.temperature <= 35 && (
-                    <p>• {translate("agri.goodConditions")}</p>
-                  )}
-                </div>
-              </div>
+              {/* Advanced Agriculture Advisory */}
+              <AdvancedAgriAdvisory weatherData={weatherData} />
 
               {/* Disaster Alert Status */}
               <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-amber-50/80 to-orange-50/80 dark:from-amber-950/30 dark:to-orange-950/30 p-4">
