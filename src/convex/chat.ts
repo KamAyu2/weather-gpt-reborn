@@ -606,35 +606,32 @@ LANGUAGE RULE:
 - Weather data values (temperatures, percentages, wind speeds) stay as numbers, but labels and descriptions should be in ${languageName}.`;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userMessage }] }],
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: {
-            temperature: 0.8,
-            topP: 0.95,
-            topK: 50,
-            maxOutputTokens: 4096,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => "unknown");
-      console.error("Gemini API error:", response.status, errBody);
-      return `**Gemini API Error (${response.status}):**\n\n${errBody.slice(0, 500)}\n\nPlease check your API key. You can get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`;
-    }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || getFallbackResponse(userMessage);
+    // Use the official @google/genai SDK which handles auth correctly
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: userMessage,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.8,
+        topP: 0.95,
+        topK: 50,
+        maxOutputTokens: 4096,
+      },
+    });
+    
+    const text = response.text;
+    return text || getFallbackResponse(userMessage);
   } catch (error) {
     console.error("Gemini callLLM exception:", error);
-    return `**Error calling Gemini:** ${(error as Error).message}\n\nPlease check your API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`;
+    const errMsg = (error as Error).message || String(error);
+    // If it's an auth error, give a helpful message
+    if (errMsg.includes("401") || errMsg.includes("UNAUTHENTICATED") || errMsg.includes("invalid")) {
+      return `**API Key Issue:** The Gemini API rejected your key.\n\n**How to fix:**\n1. Go to [aistudio.google.com/apikey](https://aistudio.google.com/apikey)\n2. Create a new API key (click "Create API key")\n3. Copy the key and update it in the sidebar settings\n\nNote: Make sure you create the key in Google AI Studio (not Google Cloud Console).`;
+    }
+    return `**Error:** ${errMsg.slice(0, 300)}\n\nPlease check your API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`;
   }
 }
 
