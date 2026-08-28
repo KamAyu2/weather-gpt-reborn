@@ -625,13 +625,16 @@ LANGUAGE RULE:
     );
 
     if (!response.ok) {
-      return getFallbackResponse(userMessage);
+      const errBody = await response.text().catch(() => "unknown");
+      console.error("Gemini API error:", response.status, errBody);
+      return `**Gemini API Error (${response.status}):**\n\n${errBody.slice(0, 500)}\n\nPlease check your API key. You can get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`;
     }
 
     const data = await response.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text || getFallbackResponse(userMessage);
   } catch (error) {
-    return getFallbackResponse(userMessage);
+    console.error("Gemini callLLM exception:", error);
+    return `**Error calling Gemini:** ${(error as Error).message}\n\nPlease check your API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`;
   }
 }
 
