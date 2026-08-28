@@ -106,6 +106,7 @@ export default function Dashboard() {
         conversationId: convId,
         content: text,
         language: language,
+        apiKey: (import.meta.env.VITE_GEMINI_API_KEY as string) || undefined,
       });
     } catch (error) {
       console.error("Failed to send message:", error);

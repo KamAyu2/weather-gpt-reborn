@@ -1194,7 +1194,7 @@ export const processMessage = action({
 
         if (!results || results.length === 0) {
           // Location not found — try LLM for general response
-          const text = await callLLM(content, lang);
+          const text = await callLLM(content, lang, args.apiKey);
           await ctx.runMutation(api.chat.saveAssistantMessage, {
             conversationId: args.conversationId,
             content: text,
@@ -1240,7 +1240,7 @@ export const processMessage = action({
     }
 
     // ── Route 2: No location → general knowledge via LLM ──
-    const text = await callLLM(content, lang);
+    const text = await callLLM(content, lang, args.apiKey);
     await ctx.runMutation(api.chat.saveAssistantMessage, {
       conversationId: args.conversationId,
       content: text,
