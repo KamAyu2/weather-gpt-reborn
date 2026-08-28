@@ -163,6 +163,11 @@ const WEATHER_KEYWORDS = [
   "freeze","freezing","frost","dew","precipitation","barometer","pressure","visibility","sunrise","sunset",
   "monsoon","cyclone","typhoon","hurricane","tornado","flooding","flood","drought","hail","drizzle","shower",
   "overcast","clear sky","mist","haze","thunderstorm","climate","extreme weather","critical climate",
+  // Analytical/global intent keywords
+  "critical","severe","danger","hazard","risk","alert","warning","dangerous",
+  "areas","regions","locations","monitored","worst","best","highest","lowest","most",
+  "compare","comparison","vs","versus","overall","summary","summary of",
+  "across","nationwide","everywhere","all locations","all areas",
 ];
 
 const GENERAL_PATTERNS = [
@@ -495,7 +500,97 @@ export const processMessage = action({
     const isAgricultureQuestion = /should.*i|can.*i|will.*this|will.*the|is.*my|what.*should|how.*my|affect|impact|risk|damage|protect|irrigat|spray|harvest|fertiliz|my.*crop|my.*soybean|my.*wheat|my.*rice|my.*cotton|what.*do.*for/i.test(content);
     const isAgricultureIntent = isAgricultureKeyword || (hasAgricultureContext && isAgricultureQuestion);
 
-    // Agriculture routing (highest priority)
+    // ── Analytical/Global Data Intent Detection ──
+    // These questions ask about OVERALL weather across multiple locations,
+    // NOT about a specific city. Must be detected BEFORE agriculture routing.
+    const isAnalyticalIntent = /where.*critical|which.*area|which.*location|which.*region|which.*worst|which.*best|which.*highest|which.*lowest|which.*most|where.*risk|where.*danger|where.*severe|where.*bad|where.*heavy|critical.*condition|severe.*condition|areas.*at risk|locations.*monitor|weather.*across|weather.*nationwide|overall.*weather|weather.*summary|give.*me.*summary|any.*critical|any.*severe|any.*major|what.*major|what.*concern|where.*attention|where.*focus|compare.*weather|compare.*condition|compare.*all|which.*worse|which.*better|highest.*rain|highest.*temp|most.*rain|least.*rain|rain.*highest|rain.*most|temp.*highest|temp.*most|wind.*strongest|wind.*highest|all.*location|all.*area|monitored.*area|critical.*area|risk.*area|danger.*area|alert.*area/i.test(content) && !parsed.location;
+
+    // Global Data Analysis Handler
+    if (isAnalyticalIntent) {
+      try {
+        // Fetch weather for multiple major Indian cities
+        const majorCities = ["Mumbai","Delhi","Chennai","Kolkata","Hyderabad","Pune","Bangalore","Ahmedabad","Jaipur","Lucknow","Nagpur","Bhopal"];
+        const cityWeatherResults: Array<{name: string; state: string; temp: number; humidity: number; rainProb: number; rainSum: number; windSpeed: number; weatherCode: number; condition: string}> = [];
+        
+        for (const city of majorCities) {
+          try {
+            const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: city });
+            if (results && results.length > 0) {
+              const best = results[0];
+              const wd: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, { latitude: best.latitude, longitude: best.longitude, locationName: best.name, country: best.country, timezone: best.timezone || "auto" });
+              const today = wd.daily[0];
+              cityWeatherResults.push({
+                name: best.name, state: best.country,
+                temp: wd.current.temperature, humidity: wd.current.humidity,
+                rainProb: today ? today.precipitationProbabilityMax : 0,
+                rainSum: today ? today.precipitationSum : 0,
+                windSpeed: wd.current.windSpeed,
+                weatherCode: wd.current.weatherCode,
+                condition: getWeatherDescription(wd.current.weatherCode),
+              });
+            }
+          } catch { /* skip failed cities */ }
+        }
+
+        if (cityWeatherResults.length === 0) {
+          const text = "I couldn't fetch weather data for the monitored locations. Please try again.";
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+          return { text, metadata: null };
+        }
+
+        // Analyze the data
+        const sorted_by_rain = [...cityWeatherResults].sort((a, b) => b.rainProb - a.rainProb);
+        const sorted_by_temp = [...cityWeatherResults].sort((a, b) => b.temp - a.temp);
+        const sorted_by_wind = [...cityWeatherResults].sort((a, b) => b.windSpeed - a.windSpeed);
+        const criticalCities = cityWeatherResults.filter(c => c.rainProb > 70 || c.weatherCode >= 61 || c.weatherCode >= 95 || c.windSpeed > 40);
+        const severeCities = cityWeatherResults.filter(c => c.weatherCode >= 95 || c.windSpeed > 50 || c.rainProb > 90);
+
+        // Build structured data for LLM
+        const dataLines: string[] = [];
+        dataLines.push("REAL-TIME WEATHER DATA FOR " + cityWeatherResults.length + " INDIAN CITIES:");
+        dataLines.push("");
+        for (const c of cityWeatherResults) {
+          dataLines.push(c.name + ": " + c.temp + "C, " + c.humidity + "% humidity, " + c.rainProb + "% rain prob, " + c.rainSum + "mm rain, " + c.windSpeed + " km/h wind, " + c.condition);
+        }
+        dataLines.push("");
+        dataLines.push("CRITICAL/CONCERN AREAS (rain prob > 70% OR active rain OR thunderstorm OR strong wind): " + criticalCities.map(c => c.name).join(", ") + (criticalCities.length === 0 ? "None" : ""));
+        dataLines.push("SEVERE AREAS (thunderstorm OR wind > 50 km/h OR rain > 90%): " + severeCities.map(c => c.name).join(", ") + (severeCities.length === 0 ? "None" : ""));
+        dataLines.push("HIGHEST RAIN PROBABILITY: " + sorted_by_rain[0].name + " (" + sorted_by_rain[0].rainProb + "%)");
+        dataLines.push("HIGHEST TEMPERATURE: " + sorted_by_temp[0].name + " (" + sorted_by_temp[0].temp + "C)");
+        dataLines.push("STRONGEST WIND: " + sorted_by_wind[0].name + " (" + sorted_by_wind[0].windSpeed + " km/h)");
+
+        // Build the LLM prompt
+        const llmPrompt = [
+          "You are WeatherGPT analyzing weather data across Indian cities.",
+          "",
+          "USER QUESTION: \"" + content + "\"",
+          "",
+          ...dataLines,
+          "",
+          "INSTRUCTIONS:",
+          "- Answer the user's question using ONLY the real data above.",
+          "- Identify which locations are critical, at risk, or noteworthy.",
+          "- Provide specific city names and actual weather values.",
+          "- Do NOT invent locations or data not in the list above.",
+          "- If no locations are critical, say so clearly.",
+          "- Use markdown formatting.",
+          "- End with: '*Data from Open-Meteo real-time weather API, scanning ' + cityWeatherResults.length + ' Indian cities. Not an official warning.*'",
+        ].join("\n");
+
+        const text = await callLLM(llmPrompt, lang, args.apiKey);
+        if (text && !text.startsWith("**Error:**")) {
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+          return { text, metadata: null };
+        }
+      } catch (err) {
+        console.error("Global analysis error:", err);
+        const text = "I had trouble analyzing the weather data across locations. Please try again.";
+        await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+        return { text, metadata: null };
+      }
+    }
+
+    // Agriculture routing (highest priority for agriculture-specific questions)
     if (isAgricultureIntent || (hasAgricultureContext && isFollowUpAnswer(content))) {
       try {
         let resolvedLocation = parsed.location || agriCtx.location;
