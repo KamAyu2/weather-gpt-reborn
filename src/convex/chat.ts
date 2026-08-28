@@ -126,7 +126,7 @@ const INDIAN_LOCATIONS = [
   "Johannesburg", "Cape Town", "Rome", "Barcelona", "Amsterdam", "Vienna",
   "Prague", "Zurich", "Geneva", "Stockholm", "Oslo", "Helsinki", "Copenhagen",
   "Warsaw", "Budapest", "Athens", "Lisbon", "Madrid",
-  // Countries (for queries like "weather in Pakistan")
+  // Countries
   "Pakistan", "Bangladesh", "Sri Lanka", "Nepal", "Bhutan", "Maldives",
   "Afghanistan", "Myanmar", "China", "Japan", "Thailand", "Vietnam",
   "Indonesia", "Philippines", "Malaysia",
@@ -147,10 +147,8 @@ const WEATHER_KEYWORDS = [
   "monsoon", "cyclone", "typhoon", "hurricane", "tornado", "flooding", "flood",
   "drought", "hail", "sleet", "drizzle", "shower", "overcast", "partly cloudy",
   "clear sky", "mist", "haze", "smog", "thunderstorm", "blizzard",
-  // Climate-related keywords
   "climate", "climate change", "global warming", "greenhouse", "el nino", "la nina",
   "extreme weather", "critical climate", "weather condition",
-  // Hindi weather words
   "mausam", "tapman", "barish", "garmi", "thandi", "hawa", "dhund", "badal",
   "chhaon", "dhoop", "toofan", "chakravat", "sukha", "bajrapat",
 ];
@@ -174,11 +172,9 @@ const GENERAL_PATTERNS = [
 
 function isWeatherIntent(msg: string): boolean {
   const lower = msg.toLowerCase();
-  // Check if any weather keyword is present
   for (const kw of WEATHER_KEYWORDS) {
     if (lower.includes(kw)) return true;
   }
-  // Check if a location is mentioned (weather intent by default if location is present)
   return false;
 }
 
@@ -239,6 +235,114 @@ const SOIL_TYPES = ["clay", "sandy", "loam", "silt", "peaty"];
 const YES_ANSWERS = /^(yes|yeah|yep|yup|sure|ok|okay|y|haan|ha|ji|please|do it|go ahead|sure|definitely|absolutely)$/i;
 const NO_ANSWERS = /^(no|nah|nope|nahi|n|never|skip)$/i;
 
+// Check if a short message could be a follow-up answer to a previous question
+function isFollowUpAnswer(msg: string): boolean {
+  const trimmed = msg.trim();
+  if (trimmed.length > 50) return false;
+  if (YES_ANSWERS.test(trimmed) || NO_ANSWERS.test(trimmed)) return true;
+  if (/^(haan|ha|ji|nahi|nah|theek|acha|ok|done|sahi|galat|pune|delhi|mumbai)$/i.test(trimmed.toLowerCase())) return true;
+  const words = trimmed.split(/\s+/);
+  if (words.length > 4) return false;
+  const lower = trimmed.toLowerCase();
+  if (CROP_NAMES.some(c => lower.includes(c))) return true;
+  if (CROP_STAGES.some(s => lower.includes(s))) return true;
+  if (IRRIGATION_TYPES.some(t => lower.includes(t))) return true;
+  if (SOIL_TYPES.some(t => lower.includes(t))) return true;
+  if (words.length <= 3 && /^[A-Z]/.test(trimmed)) return true;
+  if (/^(today|tomorrow|this week|next week|daily|weekly|7.day|month)$/i.test(lower)) return true;
+  return false;
+}
+
+function extractAgriContext(messages: Array<{ role: string; content: string; metadata?: { location?: string; weatherData?: import("./weather").WeatherData } }>): AgriContext {
+  const ctx: AgriContext = {
+    location: null,
+    state: null,
+    crop: null,
+    cropStage: null,
+    soilType: null,
+    irrigationType: null,
+    lastAssistantAskedFor: null,
+    weatherData: null,
+  };
+
+  for (const msg of messages) {
+    const content = msg.content.toLowerCase();
+    const fullContent = msg.content;
+
+    // Only set location from metadata if agriculture context doesn't already have one
+    // This prevents weather responses from overwriting established agriculture location
+    if (msg.metadata?.location && !ctx.location) {
+      ctx.location = msg.metadata.location;
+    }
+    if (msg.metadata?.weatherData) {
+      ctx.weatherData = msg.metadata.weatherData;
+    }
+
+    if (msg.role === "user") {
+      for (const crop of CROP_NAMES) {
+        if (content.includes(crop)) {
+          ctx.crop = crop.charAt(0).toUpperCase() + crop.slice(1);
+          break;
+        }
+      }
+      for (const stage of CROP_STAGES) {
+        if (content.includes(stage)) {
+          ctx.cropStage = stage.charAt(0).toUpperCase() + stage.slice(1);
+          break;
+        }
+      }
+      if (content.includes("general") || content.includes("overall") || content.includes("any crop")) {
+        ctx.crop = "General";
+      }
+      for (const soil of SOIL_TYPES) {
+        if (content.includes(soil)) {
+          ctx.soilType = soil.charAt(0).toUpperCase() + soil.slice(1);
+          break;
+        }
+      }
+      for (const irr of IRRIGATION_TYPES) {
+        if (content.includes(irr)) {
+          ctx.irrigationType = irr.charAt(0).toUpperCase() + irr.slice(1);
+          break;
+        }
+      }
+      for (const state of INDIAN_STATES) {
+        if (content.includes(state)) {
+          ctx.state = state.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          break;
+        }
+      }
+      if (!ctx.location) {
+        const locMatch = /(?:in|at|from|near|of|for)\s+([A-Za-z\s,.'-]+)/i.exec(fullContent);
+        if (locMatch) {
+          const candidate = locMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
+          if (candidate.length >= 2) {
+            ctx.location = candidate;
+          }
+        }
+      }
+    }
+
+    if (msg.role === "assistant") {
+      if (/district.*state|state.*district|location|where.*located|which.*city|which.*district/i.test(content)) {
+        ctx.lastAssistantAskedFor = "location";
+      } else if (/which crop|what crop|crop.*grow|which crop/i.test(content)) {
+        ctx.lastAssistantAskedFor = "crop";
+      } else if (/growth stage|crop stage|what.*stage|current.*stage/i.test(content)) {
+        ctx.lastAssistantAskedFor = "cropStage";
+      } else if (/soil type|what.*soil/i.test(content)) {
+        ctx.lastAssistantAskedFor = "soilType";
+      } else if (/irrigation type|how.*irrigat/i.test(content)) {
+        ctx.lastAssistantAskedFor = "irrigationType";
+      } else if (/should.*irrigat|can.*spray|should.*harvest|advisory|advice/i.test(content)) {
+        ctx.lastAssistantAskedFor = null;
+      }
+    }
+  }
+
+  return ctx;
+}
+
 // ─── General conversation context extraction ─────────────────────────────
 
 interface GeneralContext {
@@ -256,7 +360,6 @@ function extractGeneralContext(messages: Array<{ role: string; content: string; 
     lastResponseTimestamp: 0,
   };
 
-  // Scan from newest to oldest to find the most recent weather context
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === "assistant" && msg.metadata?.weatherData) {
@@ -267,7 +370,6 @@ function extractGeneralContext(messages: Array<{ role: string; content: string; 
     }
   }
 
-  // Also find the last intent from assistant responses
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
     if (msg.role === "assistant") {
@@ -312,7 +414,6 @@ function parseTimeExpression(msg: string): TimeRange | null {
     return { startDate: tomorrow, endDate: tomorrow, label: "tomorrow", days: 1 };
   }
   if (/this weekend|is weekend|weekend/i.test(msg)) {
-    // Find next Saturday
     const dayOfWeek = now.getDay();
     const daysToSat = (6 - dayOfWeek + 7) % 7 || 7;
     const saturday = new Date(now.getTime() + daysToSat * 86400000);
@@ -336,137 +437,7 @@ function parseTimeExpression(msg: string): TimeRange | null {
   return null;
 }
 
-// Check if a short message could be a follow-up answer to a previous question
-function isFollowUpAnswer(msg: string): boolean {
-  const trimmed = msg.trim();
-  // Very short messages (1-3 words) that don't contain weather/agri keywords
-  // and aren't question patterns are likely follow-up answers
-  if (trimmed.length > 50) return false;
-  if (YES_ANSWERS.test(trimmed) || NO_ANSWERS.test(trimmed)) return true;
-  // Hindi non-Latin short answers
-  if (/^(haan|ha|ji|nahi|nah|theek|acha|ok|done|sahi|galat|pune|delhi|mumbai)$/i.test(trimmed.toLowerCase())) return true;
-  const words = trimmed.split(/\s+/);
-  if (words.length > 4) return false;
-  // Check if it's a known crop name
-  const lower = trimmed.toLowerCase();
-  if (CROP_NAMES.some(c => lower.includes(c))) return true;
-  // Check if it's a known crop stage
-  if (CROP_STAGES.some(s => lower.includes(s))) return true;
-  // Check if it's a known irrigation/soil type
-  if (IRRIGATION_TYPES.some(t => lower.includes(t))) return true;
-  if (SOIL_TYPES.some(t => lower.includes(t))) return true;
-  // Check if it looks like a location (capitalized or short Indian name)
-  if (words.length <= 3 && /^[A-Z]/.test(trimmed)) return true;
-  // Common short answers
-  if (/^(today|tomorrow|this week|next week|daily|weekly|7.day|month)$/i.test(lower)) return true;
-  return false;
-}
-
-function extractAgriContext(messages: Array<{ role: string; content: string; metadata?: { location?: string; weatherData?: import("./weather").WeatherData } }>): AgriContext {
-  const ctx: AgriContext = {
-    location: null,
-    state: null,
-    crop: null,
-    cropStage: null,
-    soilType: null,
-    irrigationType: null,
-    lastAssistantAskedFor: null,
-    weatherData: null,
-  };
-
-  // Scan messages from oldest to newest to build up context
-  for (const msg of messages) {
-    const content = msg.content.toLowerCase();
-    const fullContent = msg.content;
-
-    // Extract location from metadata or content
-    if (msg.metadata?.location) {
-      ctx.location = msg.metadata.location;
-    }
-
-    // Extract weather data from metadata
-    if (msg.metadata?.weatherData) {
-      ctx.weatherData = msg.metadata.weatherData;
-    }
-
-    if (msg.role === "user") {
-      // Extract crop from user message
-      for (const crop of CROP_NAMES) {
-        if (content.includes(crop)) {
-          ctx.crop = crop.charAt(0).toUpperCase() + crop.slice(1);
-          break;
-        }
-      }
-
-      // Extract crop stage
-      for (const stage of CROP_STAGES) {
-        if (content.includes(stage)) {
-          ctx.cropStage = stage.charAt(0).toUpperCase() + stage.slice(1);
-          break;
-        }
-      }
-
-      // Handle "general" as crop keyword — means user wants crop-agnostic advice
-      if (content.includes("general") || content.includes("overall") || content.includes("any crop")) {
-        ctx.crop = "General";
-      }
-
-      // Extract soil type
-      for (const soil of SOIL_TYPES) {
-        if (content.includes(soil)) {
-          ctx.soilType = soil.charAt(0).toUpperCase() + soil.slice(1);
-          break;
-        }
-      }
-
-      // Extract irrigation type
-      for (const irr of IRRIGATION_TYPES) {
-        if (content.includes(irr)) {
-          ctx.irrigationType = irr.charAt(0).toUpperCase() + irr.slice(1);
-          break;
-        }
-      }
-
-      // Try to extract state from user message
-      for (const state of INDIAN_STATES) {
-        if (content.includes(state)) {
-          ctx.state = state.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
-          break;
-        }
-      }
-
-      // Extract location from preposition patterns
-      if (!ctx.location) {
-        const locMatch = /(?:in|at|from|near|of|for)\s+([A-Za-z\s,.'-]+)/i.exec(fullContent);
-        if (locMatch) {
-          const candidate = locMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
-          if (candidate.length >= 2) {
-            ctx.location = candidate;
-          }
-        }
-      }
-    }
-
-    if (msg.role === "assistant") {
-      // Check what the assistant last asked for
-      if (/district.*state|state.*district|location|where.*located|which.*city|which.*district/i.test(content)) {
-        ctx.lastAssistantAskedFor = "location";
-      } else if (/which crop|what crop|crop.*grow|which crop/i.test(content)) {
-        ctx.lastAssistantAskedFor = "crop";
-      } else if (/growth stage|crop stage|what.*stage|current.*stage/i.test(content)) {
-        ctx.lastAssistantAskedFor = "cropStage";
-      } else if (/soil type|what.*soil/i.test(content)) {
-        ctx.lastAssistantAskedFor = "soilType";
-      } else if (/irrigation type|how.*irrigat/i.test(content)) {
-        ctx.lastAssistantAskedFor = "irrigationType";
-      } else if (/should.*irrigat|can.*spray|should.*harvest|advisory|advice/i.test(content)) {
-        ctx.lastAssistantAskedFor = null;
-      }
-    }
-  }
-
-  return ctx;
-}
+// ─── Query parsing ──────────────────────────────────────────────────────────
 
 function parseQuery(userMessage: string): ParsedQuery {
   const msg = userMessage.toLowerCase().trim();
@@ -476,33 +447,19 @@ function parseQuery(userMessage: string): ParsedQuery {
   let isWeatherQuery = false;
   let isGeneralQuery = false;
 
-  // Check if message contains non-Latin characters (Hindi, Tamil, etc.)
-  // If so, treat as general query and send to LLM directly
   const hasNonLatinChars = /[\u0900-\u097F\u0980-\u09FF\u0A00-\u0A7F\u0B00-\u0B7F\u0C00-\u0C7F\u0D00-\u0D7F\u0B80-\u0BFF]/.test(userMessage);
   if (hasNonLatinChars && msg.length > 2) {
-    // Non-English text — always route to LLM for best answers
     isGeneralQuery = true;
   }
 
-  // Check weather keywords
   isWeatherQuery = isWeatherIntent(msg);
   if (!isGeneralQuery) isGeneralQuery = isGeneralIntent(msg);
 
-  // Feature 3: Detect NWP model query intent
-  const hasNWPKeyword = /gfs|ecmwf|forecast model|weather model|nwp|numerical|prediction model|compare.*model|model.*compare/i.test(msg);
-  // Feature 7: Detect historical/climate query intent
-  const hasHistoricalKeyword = /histor|last year|last month|previous|past|climate.*trend|average.*temp|what was the weather|how was the weather|record/i.test(msg);
-
-  // Detect if this is a knowledge/exploration question (uses question words)
   const hasQuestionWord = /^(what|where|how|why|which|who|when|explain|tell me|describe)/i.test(msg);
-  // Detect if user is explicitly asking for weather at a specific location
   const hasWeatherPreposition = /\b(?:weather|temperature|temp|forecast|rain|raining|snow|storm|wind|humidity|sunrise|sunset)\s+(?:in|at|for|near|of)\b/i.test(msg) ||
     /\b(?:in|at|for|near)\s+(?:[A-Z][a-z]+|my)\b/.test(userMessage);
-  // This is a general knowledge question if it has question words
-  // and is NOT explicitly asking for weather at a location
   const isKnowledgeQuestion = hasQuestionWord && !hasWeatherPreposition && isGeneralQuery;
 
-  // Strategy 1: Check for known city names — but NOT for knowledge questions
   if (!isKnowledgeQuestion) {
     for (const city of INDIAN_LOCATIONS) {
       if (msg.includes(city.toLowerCase())) {
@@ -512,8 +469,6 @@ function parseQuery(userMessage: string): ParsedQuery {
     }
   }
 
-  // Strategy 2: Look for prepositions and extract the text after them
-  // Matches: "in Pakistan", "weather of Tokyo", "visit Paris", "forecast for London"
   if (!location && !isKnowledgeQuestion) {
     const prepositionMatch = /(?:in|at|near|around|from|to|of|for|visit|going to|travel to|staying in)\s+([A-Za-z\s,.'-]+)/i.exec(userMessage);
     if (prepositionMatch) {
@@ -526,30 +481,22 @@ function parseQuery(userMessage: string): ParsedQuery {
     }
   }
 
-  // Strategy 3: If weather query but no location found, try to extract the last proper noun (country/city name)
-  // This catches queries like "I want to visit Pakistan what is the weather conditions there"
   if (!location && isWeatherQuery) {
-    const nounMatch = /\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g.exec(userMessage);
-    if (nounMatch) {
-      // Find the last proper noun that isn't a common English word
+    const matches = userMessage.match(/\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g);
+    if (matches) {
       const commonWords = new Set(["Weather", "What", "Where", "When", "How", "Why", "Which", "Current", "Today", "Tomorrow", "This", "That", "There", "Here", "I", "Want", "To", "Is", "The", "My", "And", "But", "With", "For", "About", "Like"]);
-      const matches = userMessage.match(/\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/g);
-      if (matches) {
-        for (let i = matches.length - 1; i >= 0; i--) {
-          if (!commonWords.has(matches[i])) {
-            location = matches[i];
-            break;
-          }
+      for (let i = matches.length - 1; i >= 0; i--) {
+        if (!commonWords.has(matches[i])) {
+          location = matches[i];
+          break;
         }
       }
     }
   }
 
-  // Detect travel/advisory intent
   const isTravelQuery = /visit|travel|trip|tour|vacation|holiday|plan.*go|going.*to|should.*go|can.*go|best.*time.*visit|is.*good.*time|worth.*visit|explore|sightseeing|adventure|backpack|itinerary|destination/i.test(msg);
   const isAdvisoryQuery = /should.*i|is.*it.*safe|advice|recommend|suggest|tip|precaution|pack|carry|bring|prepare|clothes|clothing|hotel|stay|accommodation|food.*to.*eat|restaurant|things.*to.*do|attraction|place.*to.*visit|local.*food|nightlife|market/i.test(msg);
 
-  // Detect intent
   if (isTravelQuery || isAdvisoryQuery) {
     intent = "travel";
   } else if (msg.includes("forecast") || msg.includes("week") || msg.includes("7 day") || msg.includes("7-day") || msg.includes("coming days")) {
@@ -566,13 +513,9 @@ function parseQuery(userMessage: string): ParsedQuery {
     intent = "current";
   }
 
-  // If it's a pure knowledge question (no weather intent at all), clear location
-  // But if it HAS weather keywords, always keep the location — it's a weather query
   if (isKnowledgeQuestion && !isWeatherQuery) {
     location = null;
   }
-
-  // If we have a location, it's a weather query
   if (location) {
     isWeatherQuery = true;
   }
@@ -589,18 +532,16 @@ function generateConversationalGreeting(data: import("./weather").WeatherData, u
   const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   const lowerQuery = userQuery.toLowerCase();
   
-  // Detect if this is a travel/advisory question
   const isTravel = /visit|travel|trip|tour|vacation|holiday|plan.*go|going.*to|should.*go|can.*go|best.*time|worth.*visit|explore|sightseeing/i.test(lowerQuery);
   const isAdvisory = /should.*i|is.*it.*safe|advice|recommend|tip|precaution|pack|carry|prepare|clothes|hotel|stay|food|things.*to.*do|attraction|place.*to.*visit/i.test(lowerQuery);
   
   let intro = "";
   
   if (isTravel || isAdvisory) {
-    // Travel-specific greeting
     const travelIntros = [
       `Great thinking! Let me give you a complete picture of ${location.name} so you can plan smartly.`,
       `Awesome choice! Here's everything you need to know about visiting ${location.name} right now.`,
-      `Let me break down ${location.name} for you — weather, conditions, and travel tips all in one!`,
+      `Let me break down ${location.name} for you \u2014 weather, conditions, and travel tips all in one!`,
       `Smart question! Here's my full assessment of ${location.name} for your trip.`,
     ];
     intro = travelIntros[Math.floor(Math.random() * travelIntros.length)];
@@ -614,29 +555,27 @@ function generateConversationalGreeting(data: import("./weather").WeatherData, u
     intro = greetings[Math.floor(Math.random() * greetings.length)];
   }
   
-  // Context-aware follow-up based on conditions
   if (current.temperature >= 35) {
-    intro += ` It's quite hot out there — ${Math.round(current.temperature)}°C and ${condition.toLowerCase()}. ${isTravel ? "This isn't peak season for most hill stations — but if you're visiting coastal areas, mornings and evenings are pleasant." : "You might want to stay hydrated if you're heading out!"}`;
+    intro += ` It's quite hot out there \u2014 ${Math.round(current.temperature)}\u00b0C and ${condition.toLowerCase()}. ${isTravel ? "This isn't peak season for most hill stations \u2014 but if you're visiting coastal areas, mornings and evenings are pleasant." : "You might want to stay hydrated if you're heading out!"}`;
   } else if (current.temperature <= 10) {
-    intro += ` It's chilly at ${Math.round(current.temperature)}°C with ${condition.toLowerCase()}. ${isTravel ? "Pack warm layers — woolens, jackets, and thermals are essential!" : "Might want to grab a jacket!"}`;
+    intro += ` It's chilly at ${Math.round(current.temperature)}\u00b0C with ${condition.toLowerCase()}. ${isTravel ? "Pack warm layers \u2014 woolens, jackets, and thermals are essential!" : "Might want to grab a jacket!"}`;
   } else if (current.weatherCode >= 61 && current.weatherCode <= 65) {
-    intro += ` Heads up — it's raining in ${location.name} right now. ${current.precipitation > 0 ? `We're getting ${current.precipitation}mm of rain.` : "You'll want to bring an umbrella!"} ${isTravel ? "Carry rain gear and waterproof footwear." : ""}`;
+    intro += ` Heads up \u2014 it's raining in ${location.name} right now. ${current.precipitation > 0 ? `We're getting ${current.precipitation}mm of rain.` : "You'll want to bring an umbrella!"} ${isTravel ? "Carry rain gear and waterproof footwear." : ""}`;
   } else if (current.weatherCode >= 95) {
-    intro += ` ⚠️ There's a thunderstorm in ${location.name} right now. ${isTravel ? "I'd recommend delaying outdoor plans. Stay safe and explore indoor attractions instead!" : "Please stay safe and avoid outdoor activities!"}`;
+    intro += ` \u26a0\ufe0f There's a thunderstorm in ${location.name} right now. ${isTravel ? "I'd recommend delaying outdoor plans. Stay safe and explore indoor attractions instead!" : "Please stay safe and avoid outdoor activities!"}`;
   } else if (current.uvIndex >= 8) {
-    intro += ` Just a heads up — the UV index is very high at ${current.uvIndex}. ${isTravel ? "Carry sunscreen, sunglasses, and a hat if you're exploring outdoors!" : "If you're going outside, sunscreen is a must!"}`;
+    intro += ` Just a heads up \u2014 the UV index is very high at ${current.uvIndex}. ${isTravel ? "Carry sunscreen, sunglasses, and a hat if you're exploring outdoors!" : "If you're going outside, sunscreen is a must!"}`;
   } else if (current.weatherCode <= 1) {
-    intro += ` It's a beautiful ${condition.toLowerCase()} day there — ${isTravel ? "perfect conditions for sightseeing and outdoor activities!" : "perfect weather to be outside!"}`;
+    intro += ` It's a beautiful ${condition.toLowerCase()} day there \u2014 ${isTravel ? "perfect conditions for sightseeing and outdoor activities!" : "perfect weather to be outside!"}`;
   } else {
-    intro += ` The conditions are ${condition.toLowerCase()} with temperatures around ${Math.round(current.temperature)}°C.`;
+    intro += ` The conditions are ${condition.toLowerCase()} with temperatures around ${Math.round(current.temperature)}\u00b0C.`;
   }
   
-  // Add forecast summary for travel queries
   if (isTravel && daily && daily.length >= 3) {
     const avgHigh = daily.slice(0, 7).reduce((sum, d) => sum + d.temperatureMax, 0) / Math.min(daily.length, 7);
     const avgLow = daily.slice(0, 7).reduce((sum, d) => sum + d.temperatureMin, 0) / Math.min(daily.length, 7);
     const rainyDays = daily.slice(0, 7).filter(d => d.precipitationSum > 1).length;
-    intro += `\n\n📊 **Week ahead:** Average high ${avgHigh.toFixed(0)}°C / low ${avgLow.toFixed(0)}°C`;
+    intro += `\n\n\u{1f4ca} **Week ahead:** Average high ${avgHigh.toFixed(0)}\u00b0C / low ${avgLow.toFixed(0)}\u00b0C`;
     if (rainyDays > 0) intro += `, with ${rainyDays} rainy day${rainyDays > 1 ? 's' : ''} expected`;
     intro += `. `;
   }
@@ -647,35 +586,35 @@ function generateConversationalGreeting(data: import("./weather").WeatherData, u
 function generateAgriAdvisory(data: import("./weather").WeatherData): string {
   const { current, daily } = data;
   const today = daily[0];
-  let text = `\n\n🌾 **Agriculture Advisory:**\n`;
+  let text = `\n\n\ud83c\udf3e **Agriculture Advisory:**\n`;
   
   if (current.temperature >= 35) {
-    text += `• Heat stress risk for crops — ensure adequate irrigation\n`;
-    text += `• Best time for field work is early morning or late evening\n`;
+    text += `\u2022 Heat stress risk for crops \u2014 ensure adequate irrigation\n`;
+    text += `\u2022 Best time for field work is early morning or late evening\n`;
   } else if (current.temperature <= 10) {
-    text += `• Frost risk for sensitive crops — consider protective measures\n`;
-    text += `• Delay planting until temperatures rise\n`;
+    text += `\u2022 Frost risk for sensitive crops \u2014 consider protective measures\n`;
+    text += `\u2022 Delay planting until temperatures rise\n`;
   } else {
-    text += `• Good conditions for most agricultural activities\n`;
+    text += `\u2022 Good conditions for most agricultural activities\n`;
   }
   
   if (today && today.precipitationProbabilityMax > 50) {
-    text += `• Delay pesticide/fertilizer application — rain expected\n`;
-    text += `• Good time for rain-fed crop irrigation\n`;
+    text += `\u2022 Delay pesticide/fertilizer application \u2014 rain expected\n`;
+    text += `\u2022 Good time for rain-fed crop irrigation\n`;
   } else if (today && today.precipitationProbabilityMax < 20) {
-    text += `• Dry conditions — ensure adequate irrigation for crops\n`;
+    text += `\u2022 Dry conditions \u2014 ensure adequate irrigation for crops\n`;
   }
   
   if (current.windSpeed > 25) {
-    text += `• Strong winds — avoid spraying operations\n`;
-    text += `• Secure greenhouses and protective structures\n`;
+    text += `\u2022 Strong winds \u2014 avoid spraying operations\n`;
+    text += `\u2022 Secure greenhouses and protective structures\n`;
   }
   
   if (current.humidity > 80) {
-    text += `• High humidity — watch for fungal diseases in crops\n`;
-    text += `• Ensure proper ventilation in storage areas\n`;
+    text += `\u2022 High humidity \u2014 watch for fungal diseases in crops\n`;
+    text += `\u2022 Ensure proper ventilation in storage areas\n`;
   } else if (current.humidity < 30) {
-    text += `• Low humidity — increase irrigation frequency\n`;
+    text += `\u2022 Low humidity \u2014 increase irrigation frequency\n`;
   }
   
   return text;
@@ -694,128 +633,120 @@ function generateCurrentResponse(
   let text = generateConversationalGreeting(data, userQuery);
   
   text += `\n\nHere are the details:\n`;
-  text += `• **Temperature:** ${current.temperature}°C (feels like ${current.apparentTemperature}°C)\n`;
-  text += `• **Conditions:** ${condition}\n`;
-  text += `• **Humidity:** ${current.humidity}%\n`;
-  text += `• **Wind:** ${current.windSpeed} km/h ${windDir}\n`;
+  text += `\u2022 **Temperature:** ${current.temperature}\u00b0C (feels like ${current.apparentTemperature}\u00b0C)\n`;
+  text += `\u2022 **Conditions:** ${condition}\n`;
+  text += `\u2022 **Humidity:** ${current.humidity}%\n`;
+  text += `\u2022 **Wind:** ${current.windSpeed} km/h ${windDir}\n`;
   
   if (current.precipitation > 0) {
-    text += `• **Precipitation:** ${current.precipitation} mm\n`;
+    text += `\u2022 **Precipitation:** ${current.precipitation} mm\n`;
   }
   
-  text += `• **UV Index:** ${current.uvIndex} (${uvLevel})\n`;
+  text += `\u2022 **UV Index:** ${current.uvIndex} (${uvLevel})\n`;
   
   if (today) {
     text += `\n**Today's forecast:**\n`;
-    text += `• High of ${today.temperatureMax}°C, low of ${today.temperatureMin}°C\n`;
+    text += `\u2022 High of ${today.temperatureMax}\u00b0C, low of ${today.temperatureMin}\u00b0C\n`;
     if (today.precipitationProbabilityMax > 0) {
-      text += `• ${today.precipitationProbabilityMax}% chance of rain\n`;
+      text += `\u2022 ${today.precipitationProbabilityMax}% chance of rain\n`;
     }
     if (today.sunrise && today.sunset) {
       const sunrise = new Date(today.sunrise).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
       const sunset = new Date(today.sunset).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-      text += `• Sunrise at ${sunrise}, sunset at ${sunset}\n`;
+      text += `\u2022 Sunrise at ${sunrise}, sunset at ${sunset}\n`;
     }
   }
   
   text += `\n`;
   if (current.temperature >= 35) {
-    text += `💡 **Tip:** Stay hydrated and try to stay in shaded areas during peak hours.`;
+    text += `\ud83d\udca1 **Tip:** Stay hydrated and try to stay in shaded areas during peak hours.`;
   } else if (current.temperature <= 5) {
-    text += `💡 **Tip:** Dress in layers and keep warm! Hot drinks will be your friend today.`;
+    text += `\ud83d\udca1 **Tip:** Dress in layers and keep warm! Hot drinks will be your friend today.`;
   } else if (current.weatherCode >= 61 && current.weatherCode <= 65) {
-    text += `💡 **Tip:** Don't forget your umbrella or raincoat if you're heading out.`;
+    text += `\ud83d\udca1 **Tip:** Don't forget your umbrella or raincoat if you're heading out.`;
   } else if (current.uvIndex >= 6) {
-    text += `💡 **Tip:** Apply sunscreen SPF 30+ and wear sunglasses.`;
+    text += `\ud83d\udca1 **Tip:** Apply sunscreen SPF 30+ and wear sunglasses.`;
   } else {
-    text += `💡 **Tip:** Great conditions to be outdoors! Enjoy the weather.`;
+    text += `\ud83d\udca1 **Tip:** Great conditions to be outdoors! Enjoy the weather.`;
   }
   
   if (current.temperature >= 40) {
-    text += `\n\n⚠️ **Heat advisory:** Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure.`;
+    text += `\n\n\u26a0\ufe0f **Heat advisory:** Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure.`;
   } else if (current.temperature <= 0) {
-    text += `\n\n⚠️ **Cold advisory:** Freezing conditions. Take precautions against frostbite.`;
+    text += `\n\n\u26a0\ufe0f **Cold advisory:** Freezing conditions. Take precautions against frostbite.`;
   }
   
   if (current.windSpeed >= 50) {
-    text += `\n⚠️ **Wind advisory:** Strong winds detected. Secure loose objects and avoid outdoor activities.`;
+    text += `\n\u26a0\ufe0f **Wind advisory:** Strong winds detected. Secure loose objects and avoid outdoor activities.`;
   }
   
   if (current.weatherCode >= 95) {
-    text += `\n⚠️ **Severe weather alert:** Thunderstorm activity in the area. Seek shelter indoors immediately.`;
+    text += `\n\u26a0\ufe0f **Severe weather alert:** Thunderstorm activity in the area. Seek shelter indoors immediately.`;
   }
 
   const query = userQuery.toLowerCase();
   
-  // Agriculture advisory
   if (query.includes("farm") || query.includes("crop") || query.includes("agri") || query.includes("soil") || query.includes("irrigation") || query.includes("harvest")) {
     text += generateAgriAdvisory(data);
   }
   
-  // Travel advisory — comprehensive for trip planning questions
   if (/visit|travel|trip|tour|vacation|holiday|plan.*go|should.*go|explore|sightseeing|adventure|itinerary|destination|best.*time/i.test(query)) {
     text += `\n\n---\n\n`;
-    text += `**🧳 Travel Advisory for ${location.name}:**\n\n`;
+    text += `**\ud83e\uddec Travel Advisory for ${location.name}:**\n\n`;
     
-    // Weather suitability
     if (current.temperature >= 15 && current.temperature <= 30 && current.weatherCode <= 3) {
-      text += `✅ **Weather Rating: Excellent** — Ideal weather for sightseeing and outdoor activities!\n\n`;
+      text += `\u2705 **Weather Rating: Excellent** \u2014 Ideal weather for sightseeing and outdoor activities!\n\n`;
     } else if (current.temperature >= 10 && current.temperature <= 35) {
-      text += `👍 **Weather Rating: Good** — Comfortable for most activities with minor precautions.\n\n`;
+      text += `\ud83d\udc4d **Weather Rating: Good** \u2014 Comfortable for most activities with minor precautions.\n\n`;
     } else if (current.temperature > 35) {
-      text += `⚠️ **Weather Rating: Hot** — Plan outdoor activities for early morning or evening. Carry water and sunscreen.\n\n`;
+      text += `\u26a0\ufe0f **Weather Rating: Hot** \u2014 Plan outdoor activities for early morning or evening. Carry water and sunscreen.\n\n`;
     } else if (current.temperature < 10) {
-      text += `🧥 **Weather Rating: Cold** — Pack warm clothes! Layer up with thermals, jackets, and woolens.\n\n`;
+      text += `\ud83e\udde5 **Weather Rating: Cold** \u2014 Pack warm clothes! Layer up with thermals, jackets, and woolens.\n\n`;
     }
     
-    // What to pack
-    text += `**🎒 What to pack:**\n`;
-    if (current.temperature < 15) text += `• Warm layers, jacket, thermals, scarf, gloves\n`;
-    if (current.temperature >= 15 && current.temperature <= 30) text += `• Light cotton clothes, sunglasses, comfortable walking shoes\n`;
-    if (current.temperature > 30) text += `• Light breathable clothes, hat, sunscreen SPF 50+, water bottle\n`;
-    if (current.uvIndex >= 6) text += `• Sunscreen SPF 30+, sunglasses, hat\n`;
-    if (current.weatherCode >= 51 && current.weatherCode <= 67) text += `• Umbrella, rain jacket, waterproof bag\n`;
-    if (current.humidity > 75) text += `• Moisture-wicking clothes, insect repellent\n`;
-    text += `• Camera, power bank, valid ID proof\n\n`;
+    text += `**\ud83c\udf92 What to pack:**\n`;
+    if (current.temperature < 15) text += `\u2022 Warm layers, jacket, thermals, scarf, gloves\n`;
+    if (current.temperature >= 15 && current.temperature <= 30) text += `\u2022 Light cotton clothes, sunglasses, comfortable walking shoes\n`;
+    if (current.temperature > 30) text += `\u2022 Light breathable clothes, hat, sunscreen SPF 50+, water bottle\n`;
+    if (current.uvIndex >= 6) text += `\u2022 Sunscreen SPF 30+, sunglasses, hat\n`;
+    if (current.weatherCode >= 51 && current.weatherCode <= 67) text += `\u2022 Umbrella, rain jacket, waterproof bag\n`;
+    if (current.humidity > 75) text += `\u2022 Moisture-wicking clothes, insect repellent\n`;
+    text += `\u2022 Camera, power bank, valid ID proof\n\n`;
     
-    // Best time to visit this month
     if (daily && daily.length >= 7) {
       const bestDays = daily.filter((d, i) => i < 7 && d.temperatureMax <= 30 && d.temperatureMax >= 15 && d.weatherCode < 61);
       if (bestDays.length >= 3) {
-        text += `**📅 This week:** ${bestDays.length} out of 7 days look great for outdoor activities!\n`;
+        text += `**\ud83d\udcc5 This week:** ${bestDays.length} out of 7 days look great for outdoor activities!\n`;
       } else {
-        text += `**📅 This week:** Weather is a bit ${current.temperature > 30 ? 'hot' : current.temperature < 10 ? 'cold' : 'unpredictable'} — plan indoor activities as backup.\n`;
+        text += `**\ud83d\udcc5 This week:** Weather is a bit ${current.temperature > 30 ? 'hot' : current.temperature < 10 ? 'cold' : 'unpredictable'} \u2014 plan indoor activities as backup.\n`;
       }
     }
     
-    // Safety tips
-    text += `\n**🛡️ Safety tips:**\n`;
-    text += `• Keep emergency contacts handy (Police: 100, Ambulance: 108)\n`;
-    text += `• Share your live location with family/friends\n`;
-    if (current.weatherCode >= 95) text += `• Avoid open areas during thunderstorms\n`;
-    if (current.windSpeed >= 40) text += `• Be cautious near loose structures in strong winds\n`;
-    text += `• Carry basic medicines and stay hydrated\n\n`;
+    text += `\n**\ud83d\udee1\ufe0f Safety tips:**\n`;
+    text += `\u2022 Keep emergency contacts handy (Police: 100, Ambulance: 108)\n`;
+    text += `\u2022 Share your live location with family/friends\n`;
+    if (current.weatherCode >= 95) text += `\u2022 Avoid open areas during thunderstorms\n`;
+    if (current.windSpeed >= 40) text += `\u2022 Be cautious near loose structures in strong winds\n`;
+    text += `\u2022 Carry basic medicines and stay hydrated\n\n`;
     
-    // Suggested follow-up
-    text += `**💡 Want more details?** Ask me about:\n`;
-    text += `• "Best places to visit in ${location.name}"\n`;
-    text += `• "7-day forecast for ${location.name}"\n`;
-    text += `• "Food and culture of ${location.name}"\n`;
+    text += `**\ud83d\udca1 Want more details?** Ask me about:\n`;
+    text += `\u2022 "Best places to visit in ${location.name}"\n`;
+    text += `\u2022 "7-day forecast for ${location.name}"\n`;
+    text += `\u2022 "Food and culture of ${location.name}"\n`;
   }
 
-  // Advisory for should-I type questions
   if (/should.*i|is.*it.*safe|is.*it.*worth|can.*i.*go/i.test(query) && !/visit|travel|trip/i.test(query)) {
-    text += `\n\n**📋 My recommendation:**\n`;
+    text += `\n\n**\ud83d\udccb My recommendation:**\n`;
     if (current.temperature >= 15 && current.temperature <= 30 && current.weatherCode < 61) {
-      text += `Yes, absolutely! The weather is pleasant right now — great time to go out.`;
+      text += `Yes, absolutely! The weather is pleasant right now \u2014 great time to go out.`;
     } else if (current.temperature > 35) {
       text += `It's quite hot. If you must go out, carry water, wear light clothes, and avoid peak sun hours (11am-3pm).`;
     } else if (current.temperature < 10) {
-      text += `It's cold — bundle up properly. Carry warm drinks and limit outdoor exposure.`;
+      text += `It's cold \u2014 bundle up properly. Carry warm drinks and limit outdoor exposure.`;
     } else if (current.weatherCode >= 61) {
-      text += `Rainy conditions — carry an umbrella and waterproof gear. Roads might be slippery.`;
+      text += `Rainy conditions \u2014 carry an umbrella and waterproof gear. Roads might be slippery.`;
     } else {
-      text += `Conditions are decent. Standard precautions apply — stay aware and enjoy!`;
+      text += `Conditions are decent. Standard precautions apply \u2014 stay aware and enjoy!`;
     }
   }
 
@@ -823,7 +754,7 @@ function generateCurrentResponse(
   const now = new Date();
   const updateTimestamp = now.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
   text += `\n\n---\n`;
-  text += `📚 **Data Source:** [Open-Meteo Weather API](https://open-meteo.com) | Updated: ${updateTimestamp}\n`;
+  text += `\ud83d\udcda **Data Source:** [Open-Meteo Weather API](https://open-meteo.com) | Updated: ${updateTimestamp}\n`;
   text += `*WeatherGPT interpretation based on real-time meteorological data. For official warnings, check [IMD](https://mausam.imd.gov.in).*`;
 
   return {
@@ -852,7 +783,7 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
     const condition = getWeatherDescription(day.weatherCode);
     const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : formatDate(day.date);
 
-    text += `**${label}:** ${condition}, ${day.temperatureMin}°C – ${day.temperatureMax}°C`;
+    text += `**${label}:** ${condition}, ${day.temperatureMin}\u00b0C \u2013 ${day.temperatureMax}\u00b0C`;
     if (day.precipitationProbabilityMax > 0) {
       text += `, ${day.precipitationProbabilityMax}% chance of rain`;
     }
@@ -864,22 +795,22 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
   const rainyDays = daily.filter((d) => d.precipitationProbabilityMax > 50).length;
   
   text += `\n**Week at a glance:**\n`;
-  text += `• Temperatures will range from ${minTemp}°C to ${maxTemp}°C\n`;
+  text += `\u2022 Temperatures will range from ${minTemp}\u00b0C to ${maxTemp}\u00b0C\n`;
   if (rainyDays > 0) {
-    text += `• Expect ${rainyDays} rainy day${rainyDays !== 1 ? "s" : ""} this week\n`;
+    text += `\u2022 Expect ${rainyDays} rainy day${rainyDays !== 1 ? "s" : ""} this week\n`;
   } else {
-    text += `• Looks like a mostly dry week ahead!\n`;
+    text += `\u2022 Looks like a mostly dry week ahead!\n`;
   }
   
   text += `\n`;
   if (rainyDays >= 4) {
-    text += `☔ **Week outlook:** Quite a wet week ahead — keep that umbrella handy!`;
+    text += `\u2602\ufe0f **Week outlook:** Quite a wet week ahead \u2014 keep that umbrella handy!`;
   } else if (maxTemp >= 35) {
-    text += `🔥 **Week outlook:** Hot week coming up — plan outdoor activities for cooler parts of the day.`;
+    text += `\ud83d\udd25 **Week outlook:** Hot week coming up \u2014 plan outdoor activities for cooler parts of the day.`;
   } else if (minTemp <= 0) {
-    text += `❄️ **Week outlook:** Cold week ahead — dress warm and watch for possible frost.`;
+    text += `\u2744\ufe0f **Week outlook:** Cold week ahead \u2014 dress warm and watch for possible frost.`;
   } else {
-    text += `🌤️ **Week outlook:** Pretty pleasant conditions overall — great week to be outdoors!`;
+    text += `\ud83c\udf24\ufe0f **Week outlook:** Pretty pleasant conditions overall \u2014 great week to be outdoors!`;
   }
 
   const query = userQuery.toLowerCase();
@@ -891,7 +822,7 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
   const now = new Date();
   const updateTimestamp = now.toLocaleString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
   text += `\n\n---\n`;
-  text += `📚 **Data Source:** [Open-Meteo Weather API](https://open-meteo.com) | Updated: ${updateTimestamp}\n`;
+  text += `\ud83d\udcda **Data Source:** [Open-Meteo Weather API](https://open-meteo.com) | Updated: ${updateTimestamp}\n`;
   text += `*WeatherGPT interpretation based on real-time meteorological data. For official warnings, check [IMD](https://mausam.imd.gov.in).*`;
 
   return {
@@ -908,113 +839,45 @@ function generateForecastResponse(data: import("./weather").WeatherData, userQue
 
 function generateErrorResponse(error: string): string {
   if (error.includes("not found")) {
-    return `I couldn't find that location. Could you try:\n\n• A different spelling of the city name\n• A nearby major city\n• Adding the state name (e.g., "Warangal, Telangana")\n\nI support **any location in India and worldwide** — from major cities to small villages. Just tell me the place name!`;
+    return `I couldn't find that location. Could you try:\n\n\u2022 A different spelling of the city name\n\u2022 A nearby major city\n\u2022 Adding the state name (e.g., "Warangal, Telangana")\n\nI support **any location in India and worldwide** \u2014 from major cities to small villages. Just tell me the place name!`;
   }
   return `I'm sorry, I encountered an issue getting weather data. Please try again in a moment, or try a different location.`;
 }
 
 function generateHelpResponse(): string {
-  return `Here's everything I can help you with:\n\n**🌤️ Weather Information**\n• "What's the weather in Mumbai?"\n• "Temperature in my village right now"\n• "Is it raining in London?"\n\n**📅 Forecasts**\n• "7-day forecast for Tokyo"\n• "Will it rain tomorrow in Pune?"\n• "Weather this week in Shimla"\n\n**🌾 Agriculture Advisory**\n• "Give me an agriculture advisory" → guided location + crop + stage\n• "Should I irrigate my soybean?" → weather-aware irrigation advice\n• "Best time to sow wheat in UP?" → crop-specific timing\n\n**⚠️ Alerts**\n• "Any cyclone alerts for Chennai?"\n• "Is it safe to fly tomorrow?"\n• "Heatwave warning in Rajasthan?"\n\n**🌍 Climate & History**\n• "Climate trend in Pune last year"\n• "Historical weather in Delhi last month"\n• "Has Chennai become warmer over the years?"\n\n**🧠 General Knowledge**\n• Ask me anything — math, science, history, cooking, travel, technology, sports!\n• "Tell me a joke"\n• "What's the capital of France?"\n\n**💡 Follow-up Questions**\n• "What about tomorrow?" (uses same location)\n• "Will it rain?" (context-aware)\n• "Should I go out?" (weather-based advice)\n\n**🔍 Explain Recommendations**\n• "Why am I seeing this?" (explains the data behind advice)\n\n**🗣️ Voice Input**\n• Tap the mic button and speak your question\n\nJust type your question and I'll do my best to help!`;
+  return `Here's everything I can help you with:\n\n**\ud83c\udf24\ufe0f Weather Information**\n\u2022 "What's the weather in Mumbai?"\n\u2022 "Temperature in my village right now"\n\u2022 "Is it raining in London?"\n\n**\ud83d\udcc5 Forecasts**\n\u2022 "7-day forecast for Tokyo"\n\u2022 "Will it rain tomorrow in Pune?"\n\u2022 "Weather this week in Shimla"\n\n**\ud83c\udf3e Agriculture Advisory**\n\u2022 "Give me an agriculture advisory" \u2192 guided location + crop + stage\n\u2022 "Should I irrigate my soybean?" \u2192 weather-aware irrigation advice\n\u2022 "Best time to sow wheat in UP?" \u2192 crop-specific timing\n\n**\u26a0\ufe0f Alerts**\n\u2022 "Any cyclone alerts for Chennai?"\n\u2022 "Is it safe to fly tomorrow?"\n\u2022 "Heatwave warning in Rajasthan?"\n\n**\ud83c\udf0d Climate & History**\n\u2022 "Climate trend in Pune last year"\n\u2022 "Historical weather in Delhi last month"\n\u2022 "Has Chennai become warmer over the years?"\n\n**\ud83e\udde0 General Knowledge**\n\u2022 Ask me anything \u2014 math, science, history, cooking, travel, technology, sports!\n\u2022 "Tell me a joke"\n\u2022 "What's the capital of France?"\n\n**\ud83d\udca1 Follow-up Questions**\n\u2022 "What about tomorrow?" (uses same location)\n\u2022 "Will it rain?" (context-aware)\n\u2022 "Should I go out?" (weather-based advice)\n\n**\ud83d\udd0d Explain Recommendations**\n\u2022 "Why am I seeing this?" (explains the data behind advice)\n\n**\ud83d\udde3\ufe0f Voice Input**\n\u2022 Tap the mic button and speak your question\n\nJust type your question and I'll do my best to help!`;
 }
 
-// ─── LLM Integration ──────────────────────────────────────────────────────
+// ─── LLM Integration ────────────────────────────────────────────────────────
 
-async function callLLM(userMessage: string, language: string = "en", apiKeyOverride?: string): Promise<string> {
-  const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return `[DEBUG] No API key found. override=${!!apiKeyOverride}, env=${!!process.env.GEMINI_API_KEY}`;
+async function callLLM(userMessage: string, lang: string, apiKey?: string): Promise<string> {
+  const key = apiKey || process.env.GEMINI_API_KEY || "";
+  if (!key) {
+    return `**GEMINI_API_KEY not configured.**\n\nFor the best answers to general knowledge questions, please add a GEMINI_API_KEY to your environment variables.\n\nIn the meantime, I'm great at:\n\u2022 Weather for any location in India or worldwide\n\u2022 7-day forecasts with detailed breakdowns\n\u2022 Agriculture advisories for farmers\n\u2022 Disaster alerts \u2014 cyclones, floods, heatwaves\n\nWhat would you like to know?`;
   }
 
-  // Map language codes to language names for the AI
-  const LANGUAGE_MAP: Record<string, string> = {
+  const langNames: Record<string, string> = {
     en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", te: "Telugu",
     mr: "Marathi", gu: "Gujarati", kn: "Kannada", ml: "Malayalam", pa: "Punjabi",
   };
-  const languageName = LANGUAGE_MAP[language] || "English";
+  const langName = langNames[lang] || "English";
 
-  const systemPrompt = `You are Weather GPT — an exceptionally intelligent, versatile AI assistant created by Team Craxzy. You are like a brilliant friend who knows everything about weather, the world, and life in general. You never give half-baked answers — always be thorough, detailed, and genuinely helpful.
+  const systemPrompt = `You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. You help users with weather information, forecasts, agriculture advisories, climate analysis, travel planning, and general knowledge.
 
-CORE IDENTITY:
-- You are a weather intelligence platform with EXTENSIVE general knowledge capabilities
-- You serve Indian users across all 28 states and 8 union territories
-- You support 10 Indian languages and are designed for rural accessibility
-- You are passionate, enthusiastic, and genuinely curious about helping users
-
-WEATHER EXPERTISE:
-- Real-time weather for ANY location in India (cities, villages, towns, districts)
-- 7-day forecasts with hourly breakdowns
-- Agriculture-specific advisories (irrigation, sowing, harvest, pest alerts)
-- Disaster alerts (cyclones, floods, heatwaves, cold waves, thunderstorms)
-- UV index, air quality, visibility, and atmospheric data
-- Compare weather between multiple cities
-- Explain climate patterns, monsoons, El Niño, La Niña, and global weather phenomena
-- Discuss which places have the most extreme or critical climate conditions and why
-- Explain the science behind weather events (why do cyclones form? what causes monsoons?)
-
-GENERAL KNOWLEDGE — ANSWER ANYTHING:
-- Science: physics, chemistry, biology, astronomy, earth science, ecology
-- History: world history, Indian history, ancient civilizations, wars, empires
-- Geography: countries, capitals, rivers, mountains, oceans, climates
-- Math: arithmetic, algebra, geometry, statistics, practical math
-- Technology: computers, AI, smartphones, programming, cybersecurity
-- Cooking: recipes from any cuisine, Indian regional foods, chai, street food
-- Travel: destinations, best times to visit, budget travel, hidden gems
-- Sports: cricket, football, Olympics, IPL, World Cup, records
-- Entertainment: Bollywood, Hollywood, music, books, TV shows
-- Health: fitness, yoga, nutrition, mental health, first aid
-- Education: study tips, exam prep, career advice
-- Business: startups, entrepreneurship, finance, investment basics
-- Culture: Indian festivals, traditions, languages, art, mythology
-- Space: planets, ISRO missions, black holes, space exploration
-- Practical life: home remedies, life hacks, DIY projects
-- Be helpful with everyday questions like "how do I make chai?" or "what's the best time to visit Goa?"
-- Explain complex concepts in simple language, especially for users who may not be tech-savvy
-- Provide practical advice when asked
-- Discuss current events, trending topics, and current affairs
-- Help with homework, research, and learning
-- Tell jokes, stories, riddles, and fun facts
-- Explain idioms, proverbs, and cultural references
-- Discuss climate change, global warming, and environmental issues in depth
-- Compare climates of different regions and explain why they differ
-
-COMMUNICATION STYLE:
-- Be warm, friendly, and conversational — like chatting with a brilliant, kind friend
-- Use simple, clear language anyone can understand
-- Use emojis naturally to make responses alive
-- Format with markdown: bullet points, bold text, numbered lists, sections for longer answers
-- For weather: always give actionable advice (carry umbrella? wear sunscreen? stay indoors?)
-- For general topics: give thorough, well-organized, genuinely interesting answers
-- If ambiguous, interpret the question charitably and give the most helpful answer
-- If you don't know, say so honestly but still provide what you DO know
-- Be enthusiastic and curious — show genuine interest
-- For Indian users, prioritize Indian context
-
-CRITICAL RULES:
-1. NEVER give a lazy or half-baked answer. Always provide complete, helpful responses.
-2. For weather: provide specific, actionable information with context
-3. For general questions: be thorough and detailed. Give examples, context, and practical tips.
-4. Never make up weather data — if you don't have real-time data, say so clearly
-5. For Indian users, prioritize Indian context (cities, crops, festivals, culture)
-6. Always try to understand what the user ACTUALLY needs, not just what they literally asked
-7. If a question is vague, give a comprehensive answer covering the most likely intents
-8. Use tables and lists to organize information when it helps readability
-9. For recipe/travel/sports questions, give specific details, not generic overviews
-10. For climate/historical questions: provide data-backed insights about temperature trends, rainfall patterns, and seasonal changes
-11. When asked about NWP models: explain what GFS, ECMWF, ICON are and how they differ
-12. For severe weather: always include safety recommendations and actionable advice
-
-LANGUAGE RULE:
-- The user has selected ${languageName} as their preferred language.
-- You MUST respond entirely in ${languageName}.
-- Keep technical weather terms in English if they have no common translation, but all conversational text, explanations, and descriptions must be in ${languageName}.
-- If the user writes to you in ${languageName}, respond in ${languageName}.
-- Weather data values (temperatures, percentages, wind speeds) stay as numbers, but labels and descriptions should be in ${languageName}.`;
+RULES:
+- Respond in ${langName} unless the user writes in a different language.
+- Be helpful, friendly, and informative.
+- Use markdown formatting for readability.
+- For weather questions, always ask for a specific location.
+- For agriculture questions, ask for location, crop, and growth stage progressively.
+- Never fabricate weather data, government warnings, or official advisories.
+- Clearly label "WeatherGPT interpretation" vs official sources.
+- Keep responses concise but thorough.
+- Support Indian context (Indian cities, agriculture, monsoon, etc.)`;
 
   try {
-    // Use the official Google GenAI SDK which handles auth properly
     const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: key });
     
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -1032,10 +895,9 @@ LANGUAGE RULE:
     return text || getFallbackResponse(userMessage);
   } catch (error) {
     console.error("Gemini callLLM exception:", error);
-    // If SDK fails, try raw fetch as fallback
     try {
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1059,87 +921,79 @@ LANGUAGE RULE:
 function getFallbackResponse(userMessage: string): string {
   const msg = userMessage.toLowerCase().trim();
   
-  // Greetings
   if (/^(hi|hello|hey|good\s*(morning|afternoon|evening)|namaste|namaskar|howdy|greetings)/i.test(msg)) {
     const greetings = [
-      "Hello! 👋 I'm Weather GPT, your intelligent weather assistant. I can help you with:\n\n• **Weather conditions** for any location in India or worldwide\n• **7-day forecasts** with detailed breakdowns\n• **Agriculture advisories** for farmers\n• **Disaster alerts** — cyclones, floods, heatwaves\n• **General knowledge** — ask me anything!\n\nWhat would you like to know?",
-      "Namaste! 🙏 I'm Weather GPT. Ask me about the weather anywhere — from Mumbai to a small village — or just chat about anything!\n\nTry asking:\n• \"Weather in my city\"\n• \"Should I irrigate crops today?\"\n• \"Tell me a joke\"",
-      "Hey there! ☀️ I'm Weather GPT, built by Team Craxzy. I know the weather for every location and can answer almost any question. What's on your mind?",
+      "Hello! \ud83d\udc4b I'm Weather GPT, your intelligent weather assistant. I can help you with:\n\n\u2022 **Weather conditions** for any location in India or worldwide\n\u2022 **7-day forecasts** with detailed breakdowns\n\u2022 **Agriculture advisories** for farmers\n\u2022 **Disaster alerts** \u2014 cyclones, floods, heatwaves\n\u2022 **General knowledge** \u2014 ask me anything!\n\nWhat would you like to know?",
+      "Namaste! \ud83d\ude4f I'm Weather GPT. Ask me about the weather anywhere \u2014 from Mumbai to a small village \u2014 or just chat about anything!\n\nTry asking:\n\u2022 \"Weather in my city\"\n\u2022 \"Should I irrigate crops today?\"\n\u2022 \"Tell me a joke\"",
+      "Hey there! \u2600\ufe0f I'm Weather GPT, built by Team Craxzy. I know the weather for every location and can answer almost any question. What's on your mind?",
     ];
     return greetings[Math.floor(Math.random() * greetings.length)];
   }
   
-  // How are you
   if (/how\s*(are\s*you|r\s*u)/i.test(msg)) {
-    return "I'm doing great, thanks for asking! ☀️ I'm always ready to help you with weather information or answer any question you have. What would you like to know?";
+    return "I'm doing great, thanks for asking! \u2600\ufe0f I'm always ready to help you with weather information or answer any question you have. What would you like to know?";
   }
   
-  // Thank you
   if (/thank|thanks|thx|shukriya|dhanyavaad/i.test(msg)) {
-    return "You're welcome! 😊 Is there anything else you'd like to know about the weather or anything else?";
+    return "You're welcome! \ud83d\ude0a Is there anything else you'd like to know about the weather or anything else?";
   }
   
-  // Goodbye
   if (/bye|goodbye|see\s*ya|later|cya|alvida/i.test(msg)) {
-    return "Goodbye! 👋 Stay weather-aware, and feel free to come back anytime you need weather information or just want to chat!";
+    return "Goodbye! \ud83d\udc4b Stay weather-aware, and feel free to come back anytime you need weather information or just want to chat!";
   }
   
-  // Jokes
   if (/joke|funny|laugh|humor|hasi|mazaak/i.test(msg)) {
     const jokes = [
-      "Why don't weather forecasters win awards? Because they always say it's partly cloudy! ⛅",
-      "What do you call a cold dog sitting on a rabbit? A chili dog on a bunny! 🐕",
-      "Why did the weather vane win the race? Because it was always pointing in the right direction! 🌬️",
-      "What's a meteorologist's favorite type of story? A thunder-thriller! ⛈️",
-      "Why was the weather report so expensive? Because it cost a pretty penny for the forecast! 💰",
-      "What did the weatherman say to the mountain? \"I've got my eye on you — you look a little peaky today!\" 🏔️",
-      "Why did the sun go to school? To get a little brighter! ☀️",
-      "What did one raindrop say to the other? Two's company, three's a cloud! 🌧️",
+      "Why don't weather forecasters win awards? Because they always say it's partly cloudy! \u26c5",
+      "What do you call a cold dog sitting on a rabbit? A chili dog on a bunny! \ud83d\udc15",
+      "Why did the weather vane win the race? Because it was always pointing in the right direction! \ud83c\udf2c\ufe0f",
+      "What's a meteorologist's favorite type of story? A thunder-thriller! \u26c8\ufe0f",
+      "Why was the weather report so expensive? Because it cost a pretty penny for the forecast! \ud83d\udcb0",
+      "What did the weatherman say to the mountain? \"I've got my eye on you \u2014 you look a little peaky today!\" \ud83c\udfd4\ufe0f",
+      "Why did the sun go to school? To get a little brighter! \u2600\ufe0f",
+      "What did one raindrop say to the other? Two's company, three's a cloud! \ud83c\udf27\ufe0f",
     ];
     return jokes[Math.floor(Math.random() * jokes.length)];
   }
   
-  // Time/date
   if (/what\s*(time|date|day)/i.test(msg)) {
     const now = new Date();
     return `It's currently ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} on ${now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}. Would you like to know the weather for this time?`;
   }
-  
-  // Weather-related but no location — check if it's a general weather knowledge question
+
+  // "Why" / Explain handler
+  if (/^why|why is|why does|explain|reason for|because of/i.test(msg) && msg.length < 80) {
+    return "I don't have enough context from our previous conversation to explain a specific recommendation. Could you ask me about the weather for a specific location first?\n\nFor example:\n\u2022 \"Weather in Pune\"\n\u2022 Then ask \"Why am I seeing this?\" for a detailed explanation.\n\nI'll show you the weather factors behind every recommendation!";
+  }
+
   if (/weather|rain|snow|temperature|forecast|wind|sun|cloud|storm|mausam|barish|garmi|thandi/i.test(msg)) {
-    // Check if it's a question asking for recommendations, comparisons, or general knowledge
     if (/which|what|where|best|worst|top|most|least|recommend|suggest|good place|nice weather|pleasant|visit|travel|holiday|vacation|tour|explore|enjoy|relax/i.test(msg)) {
       const month = new Date().getMonth();
       let seasonalAdvice = "";
-      // Indian seasonal travel advice
       if (month >= 2 && month <= 4) {
-        seasonalAdvice = "**🌸 March-May (Summer):**\n• Hill stations are perfect (Shimla, Manali, Ooty, Darjeeling)\n• Beach destinations are hot — avoid midday\n• Ladakh opens up for road trips\n• Avoid central India plains — extreme heat (40°C+)\n";
+        seasonalAdvice = "**\ud83c\udf38 March-May (Summer):**\n\u2022 Hill stations are perfect (Shimla, Manali, Ooty, Darjeeling)\n\u2022 Beach destinations are hot \u2014 avoid midday\n\u2022 Ladakh opens up for road trips\n\u2022 Avoid central India plains \u2014 extreme heat (40\u00b0C+)\n";
       } else if (month >= 5 && month <= 8) {
-        seasonalAdvice = "**🌧️ June-September (Monsoon):\n• Kerala and Western Ghats are stunning with lush greenery\n• Ladakh is at its best — clear skies, no rain\n• Avoid coastal areas — heavy rainfall and rough seas\n• Meghalaya (Cherrapunji) is magical in monsoon\n";
+        seasonalAdvice = "**\ud83c\udf27\ufe0f June-September (Monsoon):\n\u2022 Kerala and Western Ghats are stunning with lush greenery\n\u2022 Ladakh is at its best \u2014 clear skies, no rain\n\u2022 Avoid coastal areas \u2014 heavy rainfall and rough seas\n\u2022 Meghalaya (Cherrapunji) is magical in monsoon\n";
       } else if (month >= 9 && month <= 11) {
-        seasonalAdvice = "**🍂 October-November (Post-Monsoon):\n• Best time for Rajasthan (Jaipur, Udaipur, Jaisalmer)\n• Goa beaches are perfect — less crowds\n• Northeast India is beautiful with autumn colors\n• Delhi, Agra, Varanasi have pleasant weather\n";
+        seasonalAdvice = "**\ud83c\udf42 October-November (Post-Monsoon):\n\u2022 Best time for Rajasthan (Jaipur, Udaipur, Jaisalmer)\n\u2022 Goa beaches are perfect \u2014 less crowds\n\u2022 Northeast India is beautiful with autumn colors\n\u2022 Delhi, Agra, Varanasi have pleasant weather\n";
       } else {
-        seasonalAdvice = "**❄️ December-February (Winter):\n• Perfect for South India (Goa, Kerala, Pondicherry)\n• Rajasthan desert camping under stars\n• Shimla and Manali for snow lovers\n• Avoid north India plains if you dislike cold and fog\n";
+        seasonalAdvice = "**\u2744\ufe0f December-February (Winter):\n\u2022 Perfect for South India (Goa, Kerala, Pondicherry)\n\u2022 Rajasthan desert camping under stars\n\u2022 Shimla and Manali for snow lovers\n\u2022 Avoid north India plains if you dislike cold and fog\n";
       }
       
-      return `Great question! Here's my curated guide based on the current season:\n\n${seasonalAdvice}\n**🌍 Top picks worldwide this month:**\n• Bali, Indonesia — tropical paradise, warm and sunny\n• Canary Islands, Spain — mild winters, warm summers\n• Queenstown, New Zealand — adventure capital\n• Kyoto, Japan — cherry blossoms (March-April)\n
-**🗺️ Quick tips:**\n• Want specific weather? Tell me a city name!\n• "Weather in Shimla" → real-time conditions\n• "Should I visit Goa this month?" → full travel advisory\n• "7-day forecast for Manali" → weekly outlook\n\nJust name a place and I'll give you the full picture!`;
+      return `Great question! Here's my curated guide based on the current season:\n\n${seasonalAdvice}\n**\ud83c\udf0d Top picks worldwide this month:**\n\u2022 Bali, Indonesia \u2014 tropical paradise, warm and sunny\n\u2022 Canary Islands, Spain \u2014 mild winters, warm summers\n\u2022 Queenstown, New Zealand \u2014 adventure capital\n\u2022 Kyoto, Japan \u2014 cherry blossoms (March-April)\n\n**\ud83d\uddfa\ufe0f Quick tips:**\n\u2022 Want specific weather? Tell me a city name!\n\u2022 "Weather in Shimla" \u2192 real-time conditions\n\u2022 "Should I visit Goa this month?" \u2192 full travel advisory\n\u2022 "7-day forecast for Manali" \u2192 weekly outlook\n\nJust name a place and I'll give you the full picture!`;
     }
-    // Otherwise ask for a location
-    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for my village in Punjab\"\n• \"Should I visit Shimla this month?\" (gives full travel advice!)\n• \"Is it raining in London?\"\n\nI can find weather for **any location** — just tell me the name!";
+    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n\u2022 \"Weather in Mumbai\"\n\u2022 \"Forecast for my village in Punjab\"\n\u2022 \"Should I visit Shimla this month?\" (gives full travel advice!)\n\u2022 \"Is it raining in London?\"\n\nI can find weather for **any location** \u2014 just tell me the name!";
   }
   
-  // Help/capabilities
   if (/help|what\s*can\s*you|capabilities|features|commands/i.test(msg)) {
     return generateHelpResponse();
   }
   
-  // Identity questions
   if (/who\s*(made|created|built|are\s*you)|your\s*(name|creator|maker|team)/i.test(msg)) {
-    return "I'm **Weather GPT** 🌤️ — an intelligent weather assistant built by **Team Craxzy** for the Smart India Hackathon.\n\nI can help you with:\n• Real-time weather for any location\n• 7-day forecasts\n• Agriculture advisories for farmers\n• Disaster alerts\n• General knowledge questions\n\nAsk me anything!";
-  }  // Math
+    return "I'm **Weather GPT** \ud83c\udf24\ufe0f \u2014 an intelligent weather assistant built by **Team Craxzy** for the Smart India Hackathon.\n\nI can help you with:\n\u2022 Real-time weather for any location\n\u2022 7-day forecasts\n\u2022 Agriculture advisories for farmers\n\u2022 Disaster alerts\n\u2022 General knowledge questions\n\nAsk me anything!";
+  }
+  
   if (/\d+\s*[+\-*/^%]\s*\d+/i.test(msg) || /calculate|math|solve/i.test(msg)) {
-    // Try to solve simple math
     const mathMatch = msg.match(/(\d+)\s*([+\-*/^%])\s*(\d+)/);
     if (mathMatch) {
       const a = parseFloat(mathMatch[1]);
@@ -1154,28 +1008,20 @@ function getFallbackResponse(userMessage: string): string {
         case '%': result = b !== 0 ? a % b : NaN; break;
         case '^': result = Math.pow(a, b); break;
       }
-      return `🧮 **${a} ${op} ${b} = ${isNaN(result) ? 'undefined (division by zero)' : result}**\n\nNeed help with anything else? I can also help with weather, travel planning, and more!`;
+      return `\ud83e\uddee **${a} ${op} ${b} = ${isNaN(result) ? 'undefined (division by zero)' : result}**\n\nNeed help with anything else? I can also help with weather, travel planning, and more!`;
     }
-    return "I'd be happy to help with math! I can solve basic calculations. Just type something like `25 + 37` or `100 / 4` and I'll calculate it for you! 🧮";
+    return "I'd be happy to help with math! I can solve basic calculations. Just type something like `25 + 37` or `100 / 4` and I'll calculate it for you! \ud83e\uddee";
   }
 
-  // "Why" / Explain handler — no weather context available
-  if (/^why|why is|why does|explain|reason for|because of/i.test(msg) && msg.length < 80) {
-    return "I don't have enough context from our previous conversation to explain a specific recommendation. Could you ask me about the weather for a specific location first?\n\nFor example:\n• \"Weather in Pune\"\n• Then ask \"Why am I seeing this?\" for a detailed explanation.\n\nI'll show you the weather factors behind every recommendation!";
-  }
-
-  // Climate/weather knowledge questions
   if (/climate|monsoon|cyclone|flood|drought|heatwave|el.?ni|la.?ni|global.?warming|greenhouse/i.test(msg)) {
-    return "Great question about climate! 🌍\n\nI can help you with:\n\n• **Real-time weather** for any location\n• **Forecasts** and conditions\n• **Agriculture advisories**\n• **Climate trends** and historical data\n• **Severe weather alerts** across India\n\nTry asking:\n• \"Weather in Mumbai\"\n• \"7-day forecast for Delhi\"\n• \"Climate trend in Chennai last year\"\n• \"Is the weather critical anywhere in India?\"\n\nJust tell me the location and what you'd like to know!";
+    return "Great question about climate! \ud83c\udf0d\n\nI can help you with:\n\n\u2022 **Real-time weather** for any location\n\u2022 **Forecasts** and conditions\n\u2022 **Agriculture advisories**\n\u2022 **Climate trends** and historical data\n\u2022 **Severe weather alerts** across India\n\nTry asking:\n\u2022 \"Weather in Mumbai\"\n\u2022 \"7-day forecast for Delhi\"\n\u2022 \"Climate trend in Chennai last year\"\n\u2022 \"Is the weather critical anywhere in India?\"\n\nJust tell me the location and what you'd like to know!";
   }
 
-  // General knowledge questions
   if (/who|what|when|where|why|how|which|explain|tell me about|describe/i.test(msg)) {
-    return "Great question! 🧠\n\nI'm Weather GPT and I can help you with:\n\n• **Weather** — real-time conditions for any location\n• **Forecasts** — 7-day predictions with details\n• **Travel planning** — should you visit? what to pack?\n• **Agriculture** — crop-specific weather advice\n• **Alerts** — cyclone, flood, heatwave warnings\n• **Climate** — trends and historical data\n\nJust tell me what you'd like to know and where!";
+    return "Great question! \ud83e\udde0\n\nI'm Weather GPT and I can help you with:\n\n\u2022 **Weather** \u2014 real-time conditions for any location\n\u2022 **Forecasts** \u2014 7-day predictions with details\n\u2022 **Travel planning** \u2014 should you visit? what to pack?\n\u2022 **Agriculture** \u2014 crop-specific weather advice\n\u2022 **Alerts** \u2014 cyclone, flood, heatwave warnings\n\u2022 **Climate** \u2014 trends and historical data\n\nJust tell me what you'd like to know and where!";
   }
 
-  // Default — encourage weather or general questions
-  return "I'm Weather GPT, your all-in-one weather and knowledge assistant! 🌤️\n\nI can help with:\n• **Weather** — ask about any city, village, or location\n• **Forecasts** — 7-day predictions with details\n• **Agriculture** — crop-specific weather advice\n• **Alerts** — cyclone, flood, heatwave warnings\n• **General questions** — ask me anything! (requires GEMINI_API_KEY)\n• **Climate knowledge** — explain climate patterns, monsoons, and weather science\n\nJust type your question and I'll do my best to help!";
+  return "I'm Weather GPT, your all-in-one weather and knowledge assistant! \ud83c\udf24\ufe0f\n\nI can help with:\n\u2022 **Weather** \u2014 ask about any city, village, or location\n\u2022 **Forecasts** \u2014 7-day predictions with details\n\u2022 **Agriculture** \u2014 crop-specific weather advice\n\u2022 **Alerts** \u2014 cyclone, flood, heatwave warnings\n\u2022 **General questions** \u2014 ask me anything! (requires GEMINI_API_KEY)\n\u2022 **Climate knowledge** \u2014 explain climate patterns, monsoons, and weather science\n\nJust type your question and I'll do my best to help!";
 }
 
 // ─── Chat mutation ──────────────────────────────────────────────────────────
@@ -1336,25 +1182,281 @@ export const processMessage = action({
     // Parse the query
     const parsed = parseQuery(content);
 
-    // ── General Context Follow-Up ──
-    // Handle short follow-ups like "what about tomorrow?", "tonight?", etc.
+    // ── STEP 1: Extract agriculture context from conversation history ──
+    // This runs ALWAYS, before any routing, so context is never lost
+    let agriCtx: AgriContext = {
+      location: null, state: null, crop: null, cropStage: null,
+      soilType: null, irrigationType: null, lastAssistantAskedFor: null, weatherData: null,
+    };
+    let agriMessages: Array<{ role: string; content: string; metadata?: { location?: string; weatherData?: import("./weather").WeatherData } }> = [];
+    
+    try {
+      const allMessages = await ctx.runQuery(api.chat.getMessages, { conversationId: args.conversationId });
+      agriMessages = allMessages.slice(-20);
+      agriCtx = extractAgriContext(agriMessages);
+    } catch (err) {
+      console.error("Failed to extract agriculture context:", err);
+    }
+
+    // ── STEP 2: Determine if this is an agriculture question ──
+    const hasAgricultureContext = !!(agriCtx.crop || agriCtx.location);
+    const isAgricultureKeyword = /agri|crop|farm|irrigat|sow|sowing|harvest|pest|fertiliz|spray|advisory|disease|fungal|waterlog|grow|growing|cultivat|my crop|my farm|field|plant/i.test(content);
+    const isAgricultureQuestion = /should.*i|can.*i|will.*this|will.*the|is.*my|what.*should|how.*my|affect|impact|risk|damage|protect|irrigat|spray|harvest|fertiliz|good for|bad for|safe for|weather.*suitable|condition.*good|condition.*bad|rain.*affect|rain.*hurt|rain.*damage|my.*crop|my.*soybean|my.*wheat|my.*rice|my.*cotton|what.*do.*for/i.test(content);
+    
+    // Agriculture intent: either keywords match OR we have agriculture context and the question is agricultural
+    const isAgricultureIntent = isAgricultureKeyword || (hasAgricultureContext && isAgricultureQuestion);
+
+    // ── STEP 3: Agriculture context routing (HIGHEST PRIORITY) ──
+    // When agriculture context exists and the message is agriculture-related,
+    // ALWAYS route through agriculture handler — never fall through to weather
+    if (isAgricultureIntent || (hasAgricultureContext && isFollowUpAnswer(content))) {
+      try {
+        // Resolve what the follow-up is answering
+        let resolvedLocation = parsed.location || agriCtx.location;
+        let resolvedCrop = agriCtx.crop;
+        let resolvedStage = agriCtx.cropStage;
+        
+        const msgLower = content.toLowerCase().trim();
+
+        // Handle comma-separated compound answers
+        if (!resolvedLocation && !resolvedCrop && content.includes(",")) {
+          const parts = content.split(",").map(p => p.trim());
+          for (const part of parts) {
+            const partLower = part.toLowerCase();
+            if (!resolvedLocation && !CROP_NAMES.some(c => partLower.includes(c)) && !CROP_STAGES.some(s => partLower.includes(s))) {
+              resolvedLocation = part;
+            } else if (!resolvedCrop) {
+              const cropMatch = CROP_NAMES.find(c => partLower.includes(c));
+              if (cropMatch) resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
+            } else if (!resolvedStage) {
+              const stageMatch = CROP_STAGES.find(s => partLower.includes(s));
+              if (stageMatch) resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
+            }
+          }
+        }
+
+        // Handle space-separated compound: "soybean flowering" or "Pune soybean"
+        if (!resolvedLocation && !resolvedCrop) {
+          const words = msgLower.split(/\s+/);
+          for (const word of words) {
+            const cropMatch = CROP_NAMES.find(c => word.includes(c));
+            if (cropMatch && !resolvedCrop) {
+              resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
+            }
+            const stageMatch = CROP_STAGES.find(s => word.includes(s));
+            if (stageMatch && !resolvedStage) {
+              resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
+            }
+          }
+        }
+
+        // Validate: is the user's short answer actually a crop/stage, not a location?
+        const isAnswerCropOrStage = CROP_NAMES.some(c => msgLower.includes(c)) ||
+          CROP_STAGES.some(s => msgLower.includes(s));
+
+        // If assistant last asked for location and user sends a short answer
+        if (agriCtx.lastAssistantAskedFor === "location" && isFollowUpAnswer(content) && !parsed.location) {
+          if (isAnswerCropOrStage) {
+            // User answered with a crop/stage instead of a location
+            const cropMatch = CROP_NAMES.find(c => msgLower.includes(c));
+            if (cropMatch) resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
+            const stageMatch = CROP_STAGES.find(s => msgLower.includes(s));
+            if (stageMatch) resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
+            // Do NOT set as location
+          } else {
+            resolvedLocation = content.trim();
+            parsed.location = resolvedLocation;
+          }
+        }
+        
+        // If assistant last asked for crop
+        if (agriCtx.lastAssistantAskedFor === "crop" && isFollowUpAnswer(content)) {
+          if (msgLower.includes("general") || msgLower.includes("overall") || msgLower.includes("any crop")) {
+            resolvedCrop = "General";
+          } else {
+            const cropMatch = CROP_NAMES.find(c => msgLower.includes(c));
+            if (cropMatch) {
+              resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
+            } else {
+              resolvedCrop = content.trim().charAt(0).toUpperCase() + content.trim().slice(1);
+            }
+          }
+        }
+        
+        // If assistant last asked for stage
+        if (agriCtx.lastAssistantAskedFor === "cropStage" && isFollowUpAnswer(content)) {
+          const stageMatch = CROP_STAGES.find(s => msgLower.includes(s));
+          if (stageMatch) {
+            resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
+          } else {
+            resolvedStage = content.trim().charAt(0).toUpperCase() + content.trim().slice(1);
+          }
+        }
+
+        // Handle "yes do it" / agreement responses
+        if (YES_ANSWERS.test(msgLower) && agriCtx.lastAssistantAskedFor) {
+          if (agriCtx.lastAssistantAskedFor === "location" && !agriCtx.location) {
+            const text = "Sure! Please tell me your **district and state** (for example, Pune, Maharashtra), and I'll prepare the advisory for you. \ud83c\udf3e";
+            await ctx.runMutation(api.chat.saveAssistantMessage, {
+              conversationId: args.conversationId,
+              content: text,
+            });
+            return { text, metadata: null };
+          }
+        }
+
+        // ── Route A: We have ALL info (location + crop) — generate agriculture response ──
+        if (resolvedLocation && resolvedCrop) {
+          try {
+            const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: resolvedLocation });
+            if (results && results.length > 0) {
+              const best = results[0];
+              const weatherData: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, {
+                latitude: best.latitude,
+                longitude: best.longitude,
+                locationName: best.name,
+                country: best.country,
+                timezone: best.timezone || "auto",
+              });
+              
+              const contextParts = [];
+              contextParts.push(`CONVERSATION CONTEXT:`);
+              contextParts.push(`Location: ${best.name}, ${best.country}`);
+              contextParts.push(`Crop: ${resolvedCrop}`);
+              if (resolvedStage) contextParts.push(`Growth Stage: ${resolvedStage}`);
+              if (agriCtx.soilType) contextParts.push(`Soil Type: ${agriCtx.soilType}`);
+              if (agriCtx.irrigationType) contextParts.push(`Irrigation: ${agriCtx.irrigationType}`);
+              contextParts.push(``);
+              contextParts.push(`CURRENT WEATHER in ${best.name}:`);
+              contextParts.push(`Temperature: ${weatherData.current.temperature}C (feels like ${weatherData.current.apparentTemperature}C)`);
+              contextParts.push(`Humidity: ${weatherData.current.humidity}%`);
+              contextParts.push(`Wind: ${weatherData.current.windSpeed} km/h`);
+              contextParts.push(`Condition: ${getWeatherDescription(weatherData.current.weatherCode)}`);
+              contextParts.push(`UV Index: ${weatherData.current.uvIndex}`);
+              if (weatherData.current.precipitation > 0) {
+                contextParts.push(`Current rainfall: ${weatherData.current.precipitation}mm`);
+              }
+              contextParts.push(``);
+              contextParts.push(`7-DAY FORECAST (use actual values):`);
+              weatherData.daily.slice(0, 7).forEach((day: {date: string; temperatureMax: number; temperatureMin: number; weatherCode: number; precipitationProbabilityMax: number; precipitationSum: number; windSpeedMax: number}, i: number) => {
+                const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : day.date;
+                contextParts.push(`${label}: ${day.temperatureMin}-${day.temperatureMax}C, Rain prob: ${day.precipitationProbabilityMax}%, Rain: ${day.precipitationSum}mm, Wind: ${day.windSpeedMax}km/h`);
+              });
+              contextParts.push(``);
+              contextParts.push(`USER QUESTION: "${content}"`);
+              contextParts.push(``);
+              contextParts.push(`You are WeatherGPT Agriculture Advisory for ${best.name}, India. Using ONLY the real weather data above, provide a specific, actionable agriculture advisory.`);
+              if (resolvedCrop && resolvedCrop !== "General") {
+                contextParts.push(`Crop: ${resolvedCrop}`);
+                if (resolvedStage) contextParts.push(`Growth Stage: ${resolvedStage}`);
+              }
+              contextParts.push(``);
+              contextParts.push(`COVER THESE SECTIONS:`);
+              if (resolvedCrop && resolvedCrop !== "General") {
+                contextParts.push(`1. Weather Risk Assessment for ${resolvedCrop} at ${resolvedStage || "unknown"} stage`);
+                contextParts.push(`2. Direct answer to the user's question using actual weather data`);
+                contextParts.push(`3. Today's Recommended Actions (3-6 specific actions based on weather)`);
+                contextParts.push(`4. Irrigation Advisory (based on rainfall forecast, humidity, and crop stage)`);
+                contextParts.push(`5. 3-7 Day Agricultural Outlook`);
+                contextParts.push(`6. Pest & Disease Weather Risk`);
+                contextParts.push(`7. Farm Operation Windows`);
+                contextParts.push(`8. Weather Alerts`);
+                contextParts.push(`9. Confidence Level (High/Medium/Low)`);
+                contextParts.push(`10. Sources`);
+              } else {
+                contextParts.push(`1. Overall Weather Risk Assessment`);
+                contextParts.push(`2. General Agricultural Impact`);
+                contextParts.push(`3. Irrigation Considerations`);
+                contextParts.push(`4. 3-7 Day Outlook`);
+                contextParts.push(`5. General Farm Advisory`);
+                contextParts.push(`6. Weather Alerts`);
+                contextParts.push(`7. Sources`);
+              }
+              contextParts.push(``);
+              contextParts.push(`RULES: Use ONLY real weather data. Never invent values. Say "conditions may be favorable for..." for disease risk. Label "WeatherGPT interpretation" vs official sources. Answer the user's specific question FIRST, then provide broader advisory context.`);
+              
+              const enrichedMessage = contextParts.join("\n");
+              const text = await callLLM(enrichedMessage, lang, args.apiKey);
+              
+              if (text && !text.startsWith("[DEBUG]") && !text.startsWith("**Error:**")) {
+                await ctx.runMutation(api.chat.saveAssistantMessage, {
+                  conversationId: args.conversationId,
+                  content: text,
+                  metadata: {
+                    location: best.name,
+                    country: best.country,
+                    latitude: best.latitude,
+                    longitude: best.longitude,
+                    weatherData: weatherData as any,
+                  },
+                });
+                return { text, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } };
+              }
+            }
+          } catch (err) {
+            console.error("Agri context weather fetch failed:", err);
+          }
+        }
+        
+        // ── Route B: We need location ──
+        if (!resolvedLocation) {
+          if (agriCtx.lastAssistantAskedFor === "location") {
+            const text = `I understand you're interested in an agriculture advisory. To give you location-specific advice, please tell me your **district and state** (for example, Pune, Maharashtra). \ud83c\udf3e`;
+            await ctx.runMutation(api.chat.saveAssistantMessage, {
+              conversationId: args.conversationId,
+              content: text,
+            });
+            return { text, metadata: null };
+          }
+          // Haven't asked yet — start progressive questioning
+          const text = `Sure! I can provide a location-specific agriculture advisory. Please tell me your **district and state** (for example, Pune, Maharashtra). \ud83c\udf3e`;
+          await ctx.runMutation(api.chat.saveAssistantMessage, {
+            conversationId: args.conversationId,
+            content: text,
+          });
+          return { text, metadata: null };
+        }
+
+        // ── Route C: We have location but need crop ──
+        if (resolvedLocation && !resolvedCrop) {
+          let nextQ = `Got it \u2014 you're in **${resolvedLocation}**. To give you crop-specific advice, which **crop** are you growing?\n\nCommon crops: rice, wheat, soybean, cotton, maize, tomato, potato, sugarcane, groundnut, pulses, etc.\n\nYou can also say **"general"** for a crop-agnostic advisory.`;
+          await ctx.runMutation(api.chat.saveAssistantMessage, {
+            conversationId: args.conversationId,
+            content: nextQ,
+          });
+          return { text: nextQ, metadata: null };
+        }
+
+        // ── Route D: We have location + crop but need stage ──
+        if (resolvedLocation && resolvedCrop && !resolvedStage) {
+          let nextQ = `You're growing **${resolvedCrop}** in **${resolvedLocation}**. What is the current **growth stage**?\n\nStages: land preparation, sowing, germination, seedling, vegetative, flowering, fruiting, grain filling, maturity, harvest ready.\n\nSay **"unknown"** if you're not sure.`;
+          await ctx.runMutation(api.chat.saveAssistantMessage, {
+            conversationId: args.conversationId,
+            content: nextQ,
+          });
+          return { text: nextQ, metadata: null };
+        }
+
+      } catch (err) {
+        console.error("Agriculture context routing error:", err);
+        // Fall through to normal routing
+      }
+    }
+
+    // ── General Context Follow-Up (for non-agriculture short messages) ──
     const isShortFollowUp = content.length < 60 && (
       YES_ANSWERS.test(content) || NO_ANSWERS.test(content) ||
-      /what about|how about|and tomorrow|and tonight|and the|for tomorrow|for tonight|for next|tonight|tomorrow|this weekend|next week|today|next \d+ days?|daily|hourly/i.test(content) ||
-      isFollowUpAnswer(content)
+      /what about|how about|tonight|tomorrow|this weekend|next week|today|daily|hourly/i.test(content)
     );
 
-    if (isShortFollowUp && !parsed.location) {
+    if (isShortFollowUp && !parsed.location && !isAgricultureIntent) {
       try {
-        const messages = await ctx.runQuery(api.chat.getMessages, { conversationId: args.conversationId });
-        const recentMessages = messages.slice(-20);
-        const genCtx = extractGeneralContext(recentMessages);
+        const genCtx = extractGeneralContext(agriMessages);
         
         if (genCtx.lastLocation && genCtx.lastWeatherData) {
           const timeRange = parseTimeExpression(content);
           const locName = genCtx.lastLocation;
           
-          // User wants tomorrow/tonight/weekend forecast for the same location
           if (timeRange && timeRange.days <= 7) {
             try {
               const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: locName });
@@ -1387,7 +1489,6 @@ export const processMessage = action({
             }
           }
           
-          // User agreed/confirmed ("yes", "sure", "do it")
           if (YES_ANSWERS.test(content)) {
             if (genCtx.lastIntent === "forecast") {
               parsed.location = locName;
@@ -1423,281 +1524,48 @@ export const processMessage = action({
       }
     }
 
-    // ── Context-Aware Agriculture Routing ──
-    // Read conversation history for agriculture context
-    const isAgriFollowUp = isFollowUpAnswer(content) || 
-      /agri|crop|farm|irrigat|sow|harvest|pest|fertiliz|spray|advisory/i.test(content);
-    
-    if (isAgriFollowUp) {
-      try {
-        // Get conversation history (last 20 messages)
-        const messages = await ctx.runQuery(api.chat.getMessages, { conversationId: args.conversationId });
-        const recentMessages = messages.slice(-20);
-        const agriCtx = extractAgriContext(recentMessages);
-        
-        // Determine what the follow-up is answering
-        let resolvedLocation = parsed.location || agriCtx.location;
-        let resolvedCrop = agriCtx.crop;
-        let resolvedStage = agriCtx.cropStage;
-        let resolvedMessage = content;
-        
-        const msgLower = content.toLowerCase().trim();
-
-        // Handle compound answers: "Pune, soybean, flowering" or "Pune soybean flowering"
-        // If location is unknown and user sends a comma-separated or multi-word answer
-        if (!resolvedLocation && !resolvedCrop && content.includes(",")) {
-          const parts = content.split(",").map(p => p.trim());
-          for (const part of parts) {
-            const partLower = part.toLowerCase();
-            if (!resolvedLocation && !CROP_NAMES.some(c => partLower.includes(c)) && !CROP_STAGES.some(s => partLower.includes(s))) {
-              resolvedLocation = part;
-            } else if (!resolvedCrop) {
-              const cropMatch = CROP_NAMES.find(c => partLower.includes(c));
-              if (cropMatch) resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
-            } else if (!resolvedStage) {
-              const stageMatch = CROP_STAGES.find(s => partLower.includes(s));
-              if (stageMatch) resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
-            }
-          }
-        }
-        
-        // If assistant last asked for location and user sends a short answer
-        if (agriCtx.lastAssistantAskedFor === "location" && isFollowUpAnswer(content) && !parsed.location) {
-          // User is answering with a location
-          resolvedLocation = content.trim();
-          parsed.location = resolvedLocation;
-        }
-        
-        // If assistant last asked for crop
-        if (agriCtx.lastAssistantAskedFor === "crop" && isFollowUpAnswer(content)) {
-          if (msgLower.includes("general") || msgLower.includes("overall") || msgLower.includes("any crop")) {
-            resolvedCrop = "General";
-          } else {
-            const cropMatch = CROP_NAMES.find(c => msgLower.includes(c));
-            if (cropMatch) {
-              resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
-            } else {
-              resolvedCrop = content.trim().charAt(0).toUpperCase() + content.trim().slice(1);
-            }
-          }
-        }
-        
-        // If assistant last asked for stage
-        if (agriCtx.lastAssistantAskedFor === "cropStage" && isFollowUpAnswer(content)) {
-          const stageMatch = CROP_STAGES.find(s => msgLower.includes(s));
-          if (stageMatch) {
-            resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
-          } else {
-            resolvedStage = content.trim().charAt(0).toUpperCase() + content.trim().slice(1);
-          }
-        }
-        
-        // Handle "yes do it" / agreement responses
-        if (YES_ANSWERS.test(msgLower) && agriCtx.lastAssistantAskedFor) {
-          // User agreed to provide info but didn't — ask again naturally
-          if (agriCtx.lastAssistantAskedFor === "location" && !agriCtx.location) {
-            const text = "Sure! Please tell me your **district and state** (for example, Pune, Maharashtra), and I'll prepare the advisory for you. 🌾";
-            await ctx.runMutation(api.chat.saveAssistantMessage, {
-              conversationId: args.conversationId,
-              content: text,
-            });
-            return { text, metadata: null };
-          }
-        }
-        
-        // Build the enriched message with context for the weather/LLM system
-        if (resolvedLocation && !parsed.location) {
-          parsed.location = resolvedLocation;
-        }
-        
-        // If we have a location and this is an agriculture question, fetch weather and generate agri response
-        if (resolvedLocation) {
-          try {
-            const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: resolvedLocation });
-            if (results && results.length > 0) {
-              const best = results[0];
-              const weatherData: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, {
-                latitude: best.latitude,
-                longitude: best.longitude,
-                locationName: best.name,
-                country: best.country,
-                timezone: best.timezone || "auto",
-              });
-              
-              // Build context-rich message for LLM
-              const contextParts = [];
-              contextParts.push(`CONVERSATION CONTEXT:`);
-              contextParts.push(`Location: ${best.name}, ${best.country}`);
-              if (resolvedCrop) contextParts.push(`Crop: ${resolvedCrop}`);
-              if (resolvedStage) contextParts.push(`Growth Stage: ${resolvedStage}`);
-              if (agriCtx.soilType) contextParts.push(`Soil Type: ${agriCtx.soilType}`);
-              if (agriCtx.irrigationType) contextParts.push(`Irrigation: ${agriCtx.irrigationType}`);
-              contextParts.push(``);
-              contextParts.push(`CURRENT WEATHER in ${best.name}:`);
-              contextParts.push(`Temperature: ${weatherData.current.temperature}°C (feels like ${weatherData.current.apparentTemperature}°C)`);
-              contextParts.push(`Humidity: ${weatherData.current.humidity}%`);
-              contextParts.push(`Wind: ${weatherData.current.windSpeed} km/h`);
-              contextParts.push(`Condition: ${getWeatherDescription(weatherData.current.weatherCode)}`);
-              contextParts.push(`UV Index: ${weatherData.current.uvIndex}`);
-              contextParts.push(``);
-              contextParts.push(`7-DAY FORECAST:`);
-              weatherData.daily.forEach((day: {date: string; temperatureMax: number; temperatureMin: number; weatherCode: number; precipitationProbabilityMax: number; precipitationSum: number; windSpeedMax: number; uvIndexMax: number; sunrise: string; sunset: string}, i: number) => {
-                const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : day.date;
-                contextParts.push(`${label}: ${day.temperatureMin}°C - ${day.temperatureMax}°C, Rain: ${day.precipitationProbabilityMax}%, ${getWeatherDescription(day.weatherCode)}`);
-              });
-              contextParts.push(``);
-              contextParts.push(`USER MESSAGE: "${content}"`);
-              contextParts.push(``);
-              contextParts.push(`You are WeatherGPT's Agriculture Advisory for ${best.name}, India.`);
-              if (resolvedCrop && resolvedCrop !== "General") {
-                contextParts.push(`Crop: ${resolvedCrop}`);
-                if (resolvedStage) contextParts.push(`Growth Stage: ${resolvedStage}`);
-              }
-              contextParts.push(``);
-              contextParts.push(`REAL WEATHER DATA (do NOT invent any values):`);
-              contextParts.push(`Current: ${weatherData.current.temperature}C, ${weatherData.current.humidity}% humidity, ${weatherData.current.windSpeed} km/h wind`);
-              contextParts.push(`Condition: ${getWeatherDescription(weatherData.current.weatherCode)}`);
-              if (weatherData.current.precipitation > 0) {
-                contextParts.push(`Current rainfall: ${weatherData.current.precipitation}mm`);
-              }
-              contextParts.push(``);
-              contextParts.push(`7-DAY FORECAST (use actual values):`);
-              weatherData.daily.slice(0, 7).forEach((day: {date: string; temperatureMax: number; temperatureMin: number; weatherCode: number; precipitationProbabilityMax: number; precipitationSum: number; windSpeedMax: number}, i: number) => {
-                const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : day.date;
-                contextParts.push(`${label}: ${day.temperatureMin}-${day.temperatureMax}C, Rain prob: ${day.precipitationProbabilityMax}%, Rain: ${day.precipitationSum}mm, Wind: ${day.windSpeedMax}km/h`);
-              });
-              contextParts.push(``);
-              contextParts.push(`TASK: Provide a comprehensive agriculture advisory covering:`);
-              if (resolvedCrop && resolvedCrop !== "General") {
-                contextParts.push(`1. Weather Risk Assessment for ${resolvedCrop} at ${resolvedStage || "unknown"} stage`);
-                contextParts.push(`2. Todays Recommended Actions (3-6 specific actions)`);
-                contextParts.push(`3. Irrigation Advisory (based on rainfall forecast and humidity)`);
-                contextParts.push(`4. 3-7 Day Agricultural Outlook`);
-                contextParts.push(`5. Pest and Disease Weather Risk (based on temperature + humidity)`);
-                contextParts.push(`6. Farm Operation Windows (sowing, spraying, harvesting suitability)`);
-                contextParts.push(`7. Weather Alerts (if any extreme conditions)`);
-                contextParts.push(`8. Confidence Level (High/Medium/Low with reasoning)`);
-                contextParts.push(`9. Sources`);
-              } else {
-                contextParts.push(`1. Overall Weather Risk Assessment`);
-                contextParts.push(`2. General Agricultural Impact`);
-                contextParts.push(`3. Irrigation Considerations`);
-                contextParts.push(`4. 3-7 Day Outlook`);
-                contextParts.push(`5. General Farm Advisory`);
-                contextParts.push(`6. Weather Alerts`);
-                contextParts.push(`7. Sources`);
-              }
-              contextParts.push(``);
-              contextParts.push(`RULES: Use ONLY the real weather data above. Never invent values. Use "conditions may be favorable for..." for disease risk. Clearly label "WeatherGPT interpretation" vs official sources. Be specific to ${best.name}s current weather.`);
-              
-              const enrichedMessage = contextParts.join("\n");
-              const text = await callLLM(enrichedMessage, lang, args.apiKey);
-              
-              if (text && !text.startsWith("[DEBUG]") && !text.startsWith("**Error:**")) {
-                await ctx.runMutation(api.chat.saveAssistantMessage, {
-                  conversationId: args.conversationId,
-                  content: text,
-                  metadata: {
-                    location: best.name,
-                    country: best.country,
-                    latitude: best.latitude,
-                    longitude: best.longitude,
-                    weatherData: weatherData as any,
-                  },
-                });
-                return { text, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } };
-              }
-            }
-          } catch (err) {
-            console.error("Agri context weather fetch failed:", err);
-          }
-        }
-        
-        // If we have context but no location yet, ask naturally
-        if (!resolvedLocation && agriCtx.lastAssistantAskedFor === "location") {
-          const text = `I understand you're interested in an agriculture advisory. To give you location-specific advice, please tell me your **district and state** (for example, Pune, Maharashtra). 🌾`;
-          await ctx.runMutation(api.chat.saveAssistantMessage, {
-            conversationId: args.conversationId,
-            content: text,
-          });
-          return { text, metadata: null };
-        }
-        
-        // If we have location but need crop info — ask progressively
-        if (resolvedLocation && !resolvedCrop && agriCtx.lastAssistantAskedFor !== "location") {
-          // Build a natural progressive question
-          let nextQ = `Got it — you're in **${resolvedLocation}**. `;
-          if (!agriCtx.crop && !agriCtx.cropStage) {
-            nextQ += `To give you crop-specific advice, which **crop** are you growing?
-
-Common crops: rice, wheat, soybean, cotton, maize, tomato, potato, sugarcane, groundnut, pulses, etc.
-
-You can also say **"general"** for a crop-agnostic advisory.`;
-          } else if (agriCtx.crop && !agriCtx.cropStage) {
-            nextQ += `You're growing **${agriCtx.crop}**. What is the current **growth stage**?
-
-Stages: land preparation, sowing, germination, seedling, vegetative, flowering, fruiting, grain filling, maturity, harvest ready.
-
-Say **"unknown"** if you're not sure.`;
-          }
-          await ctx.runMutation(api.chat.saveAssistantMessage, {
-            conversationId: args.conversationId,
-            content: nextQ,
-          });
-          return { text: nextQ, metadata: null };
-        }
-        
-      } catch (err) {
-        console.error("Agri context routing error:", err);
-        // Fall through to normal routing
-      }
-    }
-
     // ── Explain This Recommendation ──
-    // When user asks "why" about a previous recommendation
     if (/^why|why is|why does|explain|why am i seeing|why this|reason for|because of/i.test(content) && content.length < 80) {
       try {
-        const messages = await ctx.runQuery(api.chat.getMessages, { conversationId: args.conversationId });
-        const recentMessages = messages.slice(-10);
-        const genCtx = extractGeneralContext(recentMessages);
+        const genCtx = extractGeneralContext(agriMessages);
         
         if (genCtx.lastWeatherData && genCtx.lastLocation) {
           const wd = genCtx.lastWeatherData;
           let text = `**Why am I seeing this?**\n\n`;
           text += `Based on the weather data for **${genCtx.lastLocation}**:\n\n`;
           text += `**Weather Factors:**\n`;
-          text += `• Temperature: ${wd.current.temperature}°C (feels like ${wd.current.apparentTemperature}°C)\n`;
-          text += `• Humidity: ${wd.current.humidity}%\n`;
-          text += `• Wind: ${wd.current.windSpeed} km/h\n`;
-          text += `• Condition: ${getWeatherDescription(wd.current.weatherCode)}\n`;
-          text += `• UV Index: ${wd.current.uvIndex}\n`;
+          text += `\u2022 Temperature: ${wd.current.temperature}\u00b0C (feels like ${wd.current.apparentTemperature}\u00b0C)\n`;
+          text += `\u2022 Humidity: ${wd.current.humidity}%\n`;
+          text += `\u2022 Wind: ${wd.current.windSpeed} km/h\n`;
+          text += `\u2022 Condition: ${getWeatherDescription(wd.current.weatherCode)}\n`;
+          text += `\u2022 UV Index: ${wd.current.uvIndex}\n`;
           if (wd.current.precipitation > 0) {
-            text += `• Current precipitation: ${wd.current.precipitation}mm\n`;
+            text += `\u2022 Current precipitation: ${wd.current.precipitation}mm\n`;
           }
           text += `\n**Reasoning:**\n`;
           
           const reasons: string[] = [];
-          if (wd.current.temperature >= 35) reasons.push(`• High temperature (${wd.current.temperature}°C) triggers heat advisories`);
-          if (wd.current.temperature <= 5) reasons.push(`• Low temperature (${wd.current.temperature}°C) triggers cold advisories`);
-          if (wd.current.humidity > 80) reasons.push(`• High humidity (${wd.current.humidity}%) may promote fungal disease conditions`);
-          if (wd.current.humidity < 30) reasons.push(`• Low humidity (${wd.current.humidity}%) increases water stress for crops`);
-          if (wd.current.windSpeed > 25) reasons.push(`• Strong winds (${wd.current.windSpeed} km/h) affect spraying and crop stability`);
-          if (wd.current.windSpeed > 50) reasons.push(`• Very strong winds (${wd.current.windSpeed} km/h) pose risk of crop lodging and structural damage`);
-          if (wd.current.weatherCode >= 61 && wd.current.weatherCode <= 65) reasons.push(`• Active rainfall may cause waterlogging and delay field operations`);
-          if (wd.current.weatherCode >= 95) reasons.push(`• Thunderstorm activity poses immediate safety risks`);
-          if (wd.current.uvIndex >= 8) reasons.push(`• Very high UV (${wd.current.uvIndex}) can cause sun damage to exposed crops`);
+          if (wd.current.temperature >= 35) reasons.push(`\u2022 High temperature (${wd.current.temperature}\u00b0C) triggers heat advisories`);
+          if (wd.current.temperature <= 5) reasons.push(`\u2022 Low temperature (${wd.current.temperature}\u00b0C) triggers cold advisories`);
+          if (wd.current.humidity > 80) reasons.push(`\u2022 High humidity (${wd.current.humidity}%) may promote fungal disease conditions`);
+          if (wd.current.humidity < 30) reasons.push(`\u2022 Low humidity (${wd.current.humidity}%) increases water stress for crops`);
+          if (wd.current.windSpeed > 25) reasons.push(`\u2022 Strong winds (${wd.current.windSpeed} km/h) affect spraying and crop stability`);
+          if (wd.current.windSpeed > 50) reasons.push(`\u2022 Very strong winds (${wd.current.windSpeed} km/h) pose risk of crop lodging and structural damage`);
+          if (wd.current.weatherCode >= 61 && wd.current.weatherCode <= 65) reasons.push(`\u2022 Active rainfall may cause waterlogging and delay field operations`);
+          if (wd.current.weatherCode >= 95) reasons.push(`\u2022 Thunderstorm activity poses immediate safety risks`);
+          if (wd.current.uvIndex >= 8) reasons.push(`\u2022 Very high UV (${wd.current.uvIndex}) can cause sun damage to exposed crops`);
           
           const today = wd.daily[0];
-          if (today && today.precipitationProbabilityMax > 70) reasons.push(`• High rain probability (${today.precipitationProbabilityMax}%) in the forecast affects field planning`);
-          if (today && today.precipitationSum > 20) reasons.push(`• Significant rainfall expected (${today.precipitationSum}mm) increases waterlogging risk`);
+          if (today && today.precipitationProbabilityMax > 70) reasons.push(`\u2022 High rain probability (${today.precipitationProbabilityMax}%) in the forecast affects field planning`);
+          if (today && today.precipitationSum > 20) reasons.push(`\u2022 Significant rainfall expected (${today.precipitationSum}mm) increases waterlogging risk`);
           
           if (reasons.length === 0) {
-            reasons.push(`• Current conditions are within normal ranges`);
-            reasons.push(`• Recommendations are based on standard weather-crop interaction guidelines`);
+            reasons.push(`\u2022 Current conditions are within normal ranges`);
+            reasons.push(`\u2022 Recommendations are based on standard weather-crop interaction guidelines`);
           }
           
           text += reasons.join("\n");
-          text += `\n\n**Conclusion:**\nThe recommendation is based on real-time weather data from Open-Meteo, interpreted through standard meteorological and agricultural interaction rules. Weather conditions drive the advice, not AI speculation.`;
+          text += `\n\n**Conclusion:**\nThe recommendation is based on real-time weather data from Open-Meteo, interpreted through standard meteorological and agricultural interaction rules.`;
           text += `\n\n*WeatherGPT interpretation based on actual weather data. For official advisories, check [IMD Agromet](https://mausam.imd.gov.in/responsive/agromet_adv_ser_district_level_wx_forecast.php).*`;
           
           await ctx.runMutation(api.chat.saveAssistantMessage, {
@@ -1714,10 +1582,8 @@ Say **"unknown"** if you're not sure.`;
     // ── Route 0: Severe Weather / Critical Areas (IMD + Open-Meteo real-time) ──
     if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*region|worst weather|extreme|disaster|hazard|dangerous/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone|place|area|region|warning|alerts/i.test(content)) {
       try {
-        // Fetch real-time critical weather spots from Open-Meteo for all major Indian cities
         const criticalSpots: Array<{name: string; state: string; severity: string; warning: string; type: string; temperature?: number; windSpeed?: number}> = await ctx.runAction(api.weather.fetchCriticalWeatherSpots, {});
         
-        // Also try IMD warnings
         let imdWarnings: Array<{district: string; state: string; warningMessage: string; colorCode: number}> = [];
         try {
           const imdData = await ctx.runAction(api.weather.fetchIMDWarnings, {});
@@ -1726,10 +1592,8 @@ Say **"unknown"** if you're not sure.`;
           }
         } catch { /* IMD may not always be available */ }
 
-        // Combine IMD warnings and Open-Meteo critical spots
         const allCritical: Array<{name: string; state: string; severity: string; warning: string; type: string}> = [];
         
-        // Add IMD warnings (colorCode 3=orange, 4=red)
         for (const w of imdWarnings) {
           if (w.colorCode >= 3 && w.district && w.warningMessage) {
             allCritical.push({
@@ -1742,14 +1606,12 @@ Say **"unknown"** if you're not sure.`;
           }
         }
         
-        // Add Open-Meteo critical spots
         for (const spot of criticalSpots) {
           if (spot.name && spot.warning && spot.severity !== "green") {
             allCritical.push(spot);
           }
         }
 
-        // Deduplicate by name
         const seen = new Set<string>();
         const unique = allCritical.filter((s) => {
           if (seen.has(s.name)) return false;
@@ -1757,7 +1619,6 @@ Say **"unknown"** if you're not sure.`;
           return true;
         });
 
-        // Filter by location if user mentioned one (e.g. "cyclone alerts for Chennai")
         let filteredSpots = unique;
         const queryLocation = parsed.location || null;
         if (queryLocation) {
@@ -1781,13 +1642,11 @@ Say **"unknown"** if you're not sure.`;
           text += "**\u26a0\ufe0f Real-Time Weather Status Across India**\n\n";
         }
 
-        // Summary stats
         const totalAlerts = redSpots.length + orangeSpots.length + yellowSpots.length;
         if (queryLocation) {
           if (totalAlerts === 0) {
             const locCap = queryLocation.charAt(0).toUpperCase() + queryLocation.slice(1);
             text += "No active severe weather alerts found specifically for **" + locCap + "** right now.\n\n";
-            // Show broader context if alerts exist elsewhere
             const allRedSpots = unique.filter((s) => s.severity === "red");
             const allOrangeSpots = unique.filter((s) => s.severity === "orange");
             const allYellowSpots = unique.filter((s) => s.severity === "yellow");
@@ -1865,19 +1724,16 @@ Say **"unknown"** if you're not sure.`;
     // ── Route 1: NWP Model comparison (Feature 3) ──
     if (/gfs|ecmwf|forecast model|weather model|nwp|numerical|model.*compare|compare.*model/i.test(content)) {
       try {
-        // Find location for the model comparison
         let modelName = "gfs_seamless";
         if (/ecmwf/i.test(content)) modelName = "ecmwf_ifs025";
         else if (/icon|dwd/i.test(content)) modelName = "icon_global";
         else if (/meteo.?france/i.test(content)) modelName = "meteofrance_seamless";
-        else if (/compare|all/i.test(content)) modelName = "gfs_seamless"; // Will fetch multi-model
+        else if (/compare|all/i.test(content)) modelName = "gfs_seamless";
 
-        // Find location from parsed query
         let locationName = "Mumbai";
         if (parsed.location) {
           locationName = parsed.location;
         } else {
-          // Try to extract location from message
           const locMatch = /(?:in|at|for|near)\s+([A-Za-z\s,.'-]+)/i.exec(content);
           if (locMatch) locationName = locMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
         }
@@ -1887,7 +1743,6 @@ Say **"unknown"** if you're not sure.`;
           const best = results[0];
           
           if (/compare/i.test(content)) {
-            // Multi-model comparison
             const models: Array<{model: string; daily: Array<{date: string; temperatureMax: number; temperatureMin: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}>}> = await ctx.runAction(api.weather.fetchMultiModelComparison, {
               latitude: best.latitude, longitude: best.longitude, locationName: best.name,
             });
@@ -1895,7 +1750,7 @@ Say **"unknown"** if you're not sure.`;
             models.forEach((m: typeof models[0]) => {
               text += `**${m.model}:**\n`;
               m.daily.slice(0, 3).forEach((d: typeof m.daily[0]) => {
-                text += `  ${d.date}: ${d.temperatureMax}°C / ${d.temperatureMin}°C, `;
+                text += `  ${d.date}: ${d.temperatureMax}\u00b0C / ${d.temperatureMin}\u00b0C, `;
                 if (d.precipitationSum > 0) text += `${d.precipitationSum}mm rain`;
                 else text += `dry`;
                 text += `\n`;
@@ -1908,7 +1763,6 @@ Say **"unknown"** if you're not sure.`;
             return { text, metadata: null };
           }
 
-          // Single model forecast
           const nwpData: {model: string; location: {name: string; latitude: number; longitude: number}; daily: Array<{date: string; temperatureMax: number; temperatureMin: number; precipitationSum: number; weatherCode: number; windSpeedMax: number}>} = await ctx.runAction(api.weather.fetchNWPForecast, {
             latitude: best.latitude, longitude: best.longitude, locationName: best.name, model: modelName,
           });
@@ -1916,7 +1770,7 @@ Say **"unknown"** if you're not sure.`;
           let text = `**${nwpData.model} Forecast for ${best.name}:**\n\n`;
           nwpData.daily.forEach((d: typeof nwpData.daily[0]) => {
             const wmo: Record<number, string> = { 0: "Clear", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast", 45: "Fog", 51: "Drizzle", 61: "Rain", 63: "Mod rain", 65: "Heavy rain", 71: "Snow", 80: "Showers", 95: "Thunderstorm" };
-            text += `**${d.date}:** ${wmo[d.weatherCode] || "Unknown"}, ${d.temperatureMax}°C / ${d.temperatureMin}°C`;
+            text += `**${d.date}:** ${wmo[d.weatherCode] || "Unknown"}, ${d.temperatureMax}\u00b0C / ${d.temperatureMin}\u00b0C`;
             if (d.precipitationSum > 0) text += `, ${d.precipitationSum}mm rain`;
             text += `\n`;
           });
@@ -1947,7 +1801,6 @@ Say **"unknown"** if you're not sure.`;
         if (results && results.length > 0) {
           const best = results[0];
           
-          // Determine date range based on query
           const now = new Date();
           let startDate = "";
           let endDate = "";
@@ -1970,7 +1823,6 @@ Say **"unknown"** if you're not sure.`;
             endDate = new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0];
             periodLabel = `the previous week`;
           } else {
-            // Default: last 30 days
             const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
             startDate = thirtyDaysAgo.toISOString().split("T")[0];
             endDate = now.toISOString().split("T")[0];
@@ -1986,27 +1838,25 @@ Say **"unknown"** if you're not sure.`;
             endDate,
           });
 
-          // Check if we got meaningful data
           const hasData = historical.summary.totalDays > 0 && historical.summary.avgTempMax !== 0;
           
           let text: string = `**Climate Trend in ${best.name} during ${periodLabel}:**\n\n`;
           
           if (hasData) {
           text += `**Summary:**\n`;
-          text += `• Average High: ${historical.summary.avgTempMax}°C\n`;
-          text += `• Average Low: ${historical.summary.avgTempMin}°C\n`;
-          text += `• Temperature Range: ${historical.summary.avgTempMin}°C to ${historical.summary.avgTempMax}°C\n`;
-          text += `• Total Precipitation: ${historical.summary.totalPrecipitation} mm\n`;
-          text += `• Rainy Days: ${historical.summary.rainyDays} out of ${historical.summary.totalDays} days\n`;
+          text += `\u2022 Average High: ${historical.summary.avgTempMax}\u00b0C\n`;
+          text += `\u2022 Average Low: ${historical.summary.avgTempMin}\u00b0C\n`;
+          text += `\u2022 Temperature Range: ${historical.summary.avgTempMin}\u00b0C to ${historical.summary.avgTempMax}\u00b0C\n`;
+          text += `\u2022 Total Precipitation: ${historical.summary.totalPrecipitation} mm\n`;
+          text += `\u2022 Rainy Days: ${historical.summary.rainyDays} out of ${historical.summary.totalDays} days\n`;
           if (historical.summary.hottestDay.date && historical.summary.hottestDay.temp > -999) {
-            text += `• Hottest Day: ${historical.summary.hottestDay.date} (${historical.summary.hottestDay.temp}°C)\n`;
+            text += `\u2022 Hottest Day: ${historical.summary.hottestDay.date} (${historical.summary.hottestDay.temp}\u00b0C)\n`;
           }
           if (historical.summary.coldestDay.date && historical.summary.coldestDay.temp < 999) {
-            text += `• Coldest Day: ${historical.summary.coldestDay.date} (${historical.summary.coldestDay.temp}°C)\n`;
+            text += `\u2022 Coldest Day: ${historical.summary.coldestDay.date} (${historical.summary.coldestDay.temp}\u00b0C)\n`;
           }
           
           text += `\n**Monthly Trend:**\n`;
-          // Group by month and show averages
           const monthlyData: Record<string, { temps: number[]; precip: number[] }> = {};
           historical.daily.forEach((d: {date: string; temperatureMax: number | null; temperatureMin: number | null; temperatureMean: number | null; precipitationSum: number; weatherCode: number; windSpeedMax: number}) => {
             const month = d.date.slice(0, 7);
@@ -2018,38 +1868,37 @@ Say **"unknown"** if you're not sure.`;
             if (data.temps.length > 0) {
               const avgTemp = (data.temps.reduce((a, b) => a + b, 0) / data.temps.length).toFixed(1);
               const totalPrecip = data.precip.reduce((a, b) => a + b, 0).toFixed(1);
-              text += `• ${month}: Avg ${avgTemp}°C, ${totalPrecip}mm rain\n`;
+              text += `\u2022 ${month}: Avg ${avgTemp}\u00b0C, ${totalPrecip}mm rain\n`;
             } else {
               const totalPrecip = data.precip.reduce((a, b) => a + b, 0).toFixed(1);
-              text += `• ${month}: ${totalPrecip}mm rain\n`;
+              text += `\u2022 ${month}: ${totalPrecip}mm rain\n`;
             }
           });
 
-          // Climate insights
           text += `\n**Climate Insights:**\n`;
           if (historical.summary.avgTempMax >= 35) {
-            text += `• ${best.name} experienced significant heat during this period with average highs of ${historical.summary.avgTempMax}°C\n`;
+            text += `\u2022 ${best.name} experienced significant heat during this period with average highs of ${historical.summary.avgTempMax}\u00b0C\n`;
           } else if (historical.summary.avgTempMin <= 15) {
-            text += `• ${best.name} had cooler conditions with average lows of ${historical.summary.avgTempMin}°C\n`;
+            text += `\u2022 ${best.name} had cooler conditions with average lows of ${historical.summary.avgTempMin}\u00b0C\n`;
           }
           if (historical.summary.rainyDays > historical.summary.totalDays * 0.5) {
-            text += `• Heavy rainfall activity — more than half the days had rain\n`;
+            text += `\u2022 Heavy rainfall activity \u2014 more than half the days had rain\n`;
           } else if (historical.summary.rainyDays < historical.summary.totalDays * 0.15) {
-            text += `• Mostly dry conditions with very few rainy days\n`;
+            text += `\u2022 Mostly dry conditions with very few rainy days\n`;
           }
           const avgPrecip = historical.summary.totalDays > 0 ? (historical.summary.totalPrecipitation / historical.summary.totalDays).toFixed(1) : 0;
-          text += `• Average daily precipitation: ${avgPrecip}mm\n`;
+          text += `\u2022 Average daily precipitation: ${avgPrecip}mm\n`;
           } else {
             text += `The historical archive doesn't have complete temperature data for this period yet.\n\n`;
             text += `Based on ${best.name}'s known climate patterns:\n`;
             if (best.country === "India" || (best.latitude > 8 && best.latitude < 37 && best.longitude > 68 && best.longitude < 98)) {
-              text += `• ${best.name} has a tropical climate with distinct wet and dry seasons\n`;
-              text += `• Southwest monsoon (Jun-Sep) brings the bulk of rainfall\n`;
-              text += `• Northeast monsoon (Oct-Dec) is important for southeastern India\n`;
-              text += `• Summer temperatures typically range 30-45°C depending on the region\n`;
-              text += `• Winter temperatures range 15-30°C in most of India\n`;
+              text += `\u2022 ${best.name} has a tropical climate with distinct wet and dry seasons\n`;
+              text += `\u2022 Southwest monsoon (Jun-Sep) brings the bulk of rainfall\n`;
+              text += `\u2022 Northeast monsoon (Oct-Dec) is important for southeastern India\n`;
+              text += `\u2022 Summer temperatures typically range 30-45\u00b0C depending on the region\n`;
+              text += `\u2022 Winter temperatures range 15-30\u00b0C in most of India\n`;
             } else {
-              text += `• For specific climate patterns, try asking about current weather conditions\n`;
+              text += `\u2022 For specific climate patterns, try asking about current weather conditions\n`;
             }
             text += `\nYou can ask about current weather or a different time period for real data.`;
           }
@@ -2074,7 +1923,6 @@ Say **"unknown"** if you're not sure.`;
         });
 
         if (!results || results.length === 0) {
-          // Location not found — try LLM for general response
           const text = await callLLM(content, lang, args.apiKey);
           await ctx.runMutation(api.chat.saveAssistantMessage, {
             conversationId: args.conversationId,
@@ -2120,8 +1968,7 @@ Say **"unknown"** if you're not sure.`;
       }
     }
 
-    // ── Route 2: No location → signal frontend to call Gemini directly ──
-    // Convex server actions cannot reach Gemini API, so the frontend handles this.
+    // ── No location → signal frontend to call Gemini directly ──
     return { text: null, metadata: null, useClientLLM: true };
   },
 });
