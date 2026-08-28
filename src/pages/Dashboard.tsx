@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem("gemini_api_key") || "");
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
 
   useEffect(() => {
     const check = () => {
@@ -106,13 +108,19 @@ export default function Dashboard() {
         conversationId: convId,
         content: text,
         language: language,
-        apiKey: (import.meta.env.VITE_GEMINI_API_KEY as string) || undefined,
+        apiKey: apiKey || undefined,
       });
     } catch (error) {
       console.error("Failed to send message:", error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const saveApiKey = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem("gemini_api_key", key);
+    setShowApiKeyInput(false);
   };
 
   const handleNewConversation = () => {
@@ -321,6 +329,13 @@ export default function Dashboard() {
                   <p className="truncate text-[10px] text-muted-foreground">{user?.email || "Anonymous"}</p>
                 </div>
                 <button
+                  onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                  title="Set Gemini API Key"
+                >
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                </button>
+                <button
                   onClick={handleSignOut}
                   className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                   title="Sign out"
@@ -328,6 +343,29 @@ export default function Dashboard() {
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
               </div>
+              {showApiKeyInput && (
+                <div className="mt-2 rounded-lg border border-border/50 bg-muted/30 p-2">
+                  <p className="text-[10px] text-muted-foreground mb-1.5">Gemini API Key (for AI answers)</p>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="Paste your Gemini API key..."
+                      className="flex-1 rounded-md border border-border/50 bg-background px-2 py-1 text-[11px] focus:outline-none focus:border-primary/50"
+                    />
+                    <button
+                      onClick={() => saveApiKey(apiKey)}
+                      className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[9px] text-muted-foreground/50">
+                    Get free key at <a href="https://aistudio.google.com/apikey" target="_blank" className="underline">aistudio.google.com</a>
+                  </p>
+                </div>
+              )}
             </div>
           </motion.aside>
         )}
