@@ -607,36 +607,47 @@ LANGUAGE RULE:
 - Weather data values (temperatures, percentages, wind speeds) stay as numbers, but labels and descriptions should be in ${languageName}.`;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: userMessage }] }],
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          generationConfig: {
-            temperature: 0.8,
-            topP: 0.95,
-            topK: 50,
-            maxOutputTokens: 4096,
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errBody = await response.text().catch(() => "unknown");
-      console.error("Gemini API error:", response.status, errBody);      return `**Error:** Gemini API returned status ${response.status}. Please check your API key.`;
-    }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || getFallbackResponse(userMessage);
+    // Use the official Google GenAI SDK which handles auth properly
+    const { GoogleGenAI } = await import("@google/genai");
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: userMessage,
+      config: {
+        systemInstruction: systemPrompt,
+        temperature: 0.8,
+        topP: 0.95,
+        topK: 50,
+        maxOutputTokens: 4096,
+      },
+    });
+    
+    const text = response.text;
+    return text || getFallbackResponse(userMessage);
   } catch (error) {
     console.error("Gemini callLLM exception:", error);
-    return `**Error:** ${(error as Error).message}`;
+    // If SDK fails, try raw fetch as fallback
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: userMessage }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 },
+          }),
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+      }
+    } catch { /* fallback also failed */ }
+    return `**Error:** ${(error as Error).message}\n\nPlease check your API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).`;
   }
 }
 
