@@ -251,7 +251,7 @@ function parseQuery(userMessage: string): ParsedQuery {
 }
 
 const INDIAN_LOCATIONS = [
-  "Mumbai","Delhi","Bangalore","Chennai","Kolkata","Hyderabad","Pune","Ahmedabad","Jaipur","Lucknow",
+  "Mumbai","Delhi","Bangalore","Chennai","Kolkata","Hyderabad","Pune","Ahmedabad","Jaipur","Lucknow","Goa","Panaji",
   "Kanpur","Nagpur","Indore","Thane","Bhopal","Visakhapatnam","Patna","Vadodara","Ghaziabad","Ludhiana",
   "Agra","Nashik","Faridabad","Meerut","Rajkot","Varanasi","Srinagar","Aurangabad","Dhanbad","Amritsar",
   "Ranchi","Howrah","Coimbatore","Jabalpur","Gwalior","Vijayawada","Jodhpur","Madurai","Raipur","Kochi",
@@ -497,13 +497,18 @@ export const processMessage = action({
     // Agriculture intent detection
     const hasAgricultureContext = !!(agriCtx.crop || agriCtx.location);
     const isAgricultureKeyword = /agri|crop|farm|irrigat|sow|sowing|harvest|pest|fertiliz|spray|advisory|disease|fungal|waterlog|grow|growing|cultivat|my crop|my farm|field|plant/i.test(content);
-    const isAgricultureQuestion = /should.*i|can.*i|will.*this|will.*the|is.*my|what.*should|how.*my|affect|impact|risk|damage|protect|irrigat|spray|harvest|fertiliz|my.*crop|my.*soybean|my.*wheat|my.*rice|my.*cotton|what.*do.*for/i.test(content);
+    const isAgricultureQuestion = /should\s+i|can\s+i|will\s+this|will\s+the|is\s+my|what\s+should|how\s+my|affect|impact|risk|damage|protect|irrigat|spray|harvest|fertiliz|my\s+crop|my\s+soybean|my\s+wheat|my\s+rice|my\s+cotton|what\s+do\s+for/i.test(content);
     const isAgricultureIntent = isAgricultureKeyword || (hasAgricultureContext && isAgricultureQuestion);
 
     // ── Analytical/Global Data Intent Detection ──
     // These questions ask about OVERALL weather across multiple locations,
     // NOT about a specific city. Must be detected BEFORE agriculture routing.
-    const isAnalyticalIntent = /where.*critical|which.*area|which.*location|which.*region|which.*worst|which.*best|which.*highest|which.*lowest|which.*most|where.*risk|where.*danger|where.*severe|where.*bad|where.*heavy|critical.*condition|severe.*condition|areas.*at risk|locations.*monitor|weather.*across|weather.*nationwide|overall.*weather|weather.*summary|give.*me.*summary|any.*critical|any.*severe|any.*major|what.*major|what.*concern|where.*attention|where.*focus|compare.*weather|compare.*condition|compare.*all|which.*worse|which.*better|highest.*rain|highest.*temp|most.*rain|least.*rain|rain.*highest|rain.*most|temp.*highest|temp.*most|wind.*strongest|wind.*highest|all.*location|all.*area|monitored.*area|critical.*area|risk.*area|danger.*area|alert.*area/i.test(content) && !parsed.location;
+    // Analytical: questions asking about MULTIPLE locations or overall conditions
+    // These are NOT location-specific even if a country/region name is in the message
+    const isAnalyticalByPattern = /where.*critical|which.*area|which.*location|which.*region|which.*worst|which.*best|which.*highest|which.*lowest|which.*most|where.*risk|where.*danger|where.*severe|where.*bad|where.*heavy|critical.*condition|severe.*condition|areas.*at risk|locations.*monitor|weather.*across|weather.*nationwide|overall.*weather|weather.*summary|give.*me.*summary|any.*critical|any.*severe|any.*major|what.*major|what.*concern|where.*attention|where.*focus|compare.*weather|compare.*condition|compare.*all|which.*worse|which.*better|highest.*rain|highest.*temp|most.*rain|least.*rain|rain.*highest|rain.*most|temp.*highest|temp.*most|wind.*strongest|wind.*highest|all.*location|all.*area|monitored.*area|critical.*area|risk.*area|danger.*area|alert.*area/i.test(content);
+    // If pattern matches, it is analytical EVEN if a location like 'india' was extracted
+    // The location is the SCOPE of analysis, not a filter
+    const isAnalyticalIntent = isAnalyticalByPattern;
 
     // Global Data Analysis Handler
     if (isAnalyticalIntent) {
