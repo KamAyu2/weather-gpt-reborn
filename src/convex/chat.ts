@@ -65,10 +65,12 @@ function getUVLevel(uv: number): string {
 
 interface ParsedQuery {
   location: string | null;
-  intent: "current" | "forecast" | "comparison" | "general";
+  intent: "current" | "forecast" | "comparison" | "general" | "travel" | "advisory";
   dateRange?: number;
   isWeatherQuery: boolean;
   isGeneralQuery: boolean;
+  isTravelQuery?: boolean;
+  isAdvisoryQuery?: boolean;
 }
 
 // Extensive Indian locations — cities, towns, villages, landmarks
@@ -257,8 +259,14 @@ function parseQuery(userMessage: string): ParsedQuery {
     }
   }
 
+  // Detect travel/advisory intent
+  const isTravelQuery = /visit|travel|trip|tour|vacation|holiday|plan.*go|going.*to|should.*go|can.*go|best.*time.*visit|is.*good.*time|worth.*visit|explore|sightseeing|adventure|backpack|itinerary|destination/i.test(msg);
+  const isAdvisoryQuery = /should.*i|is.*it.*safe|advice|recommend|suggest|tip|precaution|pack|carry|bring|prepare|clothes|clothing|hotel|stay|accommodation|food.*to.*eat|restaurant|things.*to.*do|attraction|place.*to.*visit|local.*food|nightlife|market/i.test(msg);
+
   // Detect intent
-  if (msg.includes("forecast") || msg.includes("week") || msg.includes("7 day") || msg.includes("7-day") || msg.includes("coming days")) {
+  if (isTravelQuery || isAdvisoryQuery) {
+    intent = "travel";
+  } else if (msg.includes("forecast") || msg.includes("week") || msg.includes("7 day") || msg.includes("7-day") || msg.includes("coming days")) {
     intent = "forecast";
   }
   if (msg.includes("tomorrow")) {
@@ -283,40 +291,68 @@ function parseQuery(userMessage: string): ParsedQuery {
     isWeatherQuery = true;
   }
 
-  return { location, intent, dateRange, isWeatherQuery, isGeneralQuery };
+  return { location, intent, dateRange, isWeatherQuery, isGeneralQuery, isTravelQuery, isAdvisoryQuery };
 }
 
 // ─── Response generation ────────────────────────────────────────────────────
 
 function generateConversationalGreeting(data: import("./weather").WeatherData, userQuery: string): string {
-  const { location, current } = data;
+  const { location, current, daily } = data;
   const condition = getWeatherDescription(current.weatherCode);
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+  const lowerQuery = userQuery.toLowerCase();
   
-  const greetings = [
-    `Good ${timeOfDay}! I just checked the weather in ${location.name} for you.`,
-    `Here's what's happening in ${location.name} right now!`,
-    `Great question! Let me tell you about the weather in ${location.name}.`,
-    `I pulled up the latest conditions for ${location.name}.`,
-  ];
+  // Detect if this is a travel/advisory question
+  const isTravel = /visit|travel|trip|tour|vacation|holiday|plan.*go|going.*to|should.*go|can.*go|best.*time|worth.*visit|explore|sightseeing/i.test(lowerQuery);
+  const isAdvisory = /should.*i|is.*it.*safe|advice|recommend|tip|precaution|pack|carry|prepare|clothes|hotel|stay|food|things.*to.*do|attraction|place.*to.*visit/i.test(lowerQuery);
   
-  let intro = greetings[Math.floor(Math.random() * greetings.length)];
+  let intro = "";
   
+  if (isTravel || isAdvisory) {
+    // Travel-specific greeting
+    const travelIntros = [
+      `Great thinking! Let me give you a complete picture of ${location.name} so you can plan smartly.`,
+      `Awesome choice! Here's everything you need to know about visiting ${location.name} right now.`,
+      `Let me break down ${location.name} for you — weather, conditions, and travel tips all in one!`,
+      `Smart question! Here's my full assessment of ${location.name} for your trip.`,
+    ];
+    intro = travelIntros[Math.floor(Math.random() * travelIntros.length)];
+  } else {
+    const greetings = [
+      `Good ${timeOfDay}! I just checked the weather in ${location.name} for you.`,
+      `Here's what's happening in ${location.name} right now!`,
+      `Great question! Let me tell you about the weather in ${location.name}.`,
+      `I pulled up the latest conditions for ${location.name}.`,
+    ];
+    intro = greetings[Math.floor(Math.random() * greetings.length)];
+  }
+  
+  // Context-aware follow-up based on conditions
   if (current.temperature >= 35) {
-    intro += ` It's quite hot out there — ${Math.round(current.temperature)}°C and ${condition.toLowerCase()}. You might want to stay hydrated if you're heading out!`;
+    intro += ` It's quite hot out there — ${Math.round(current.temperature)}°C and ${condition.toLowerCase()}. ${isTravel ? "This isn't peak season for most hill stations — but if you're visiting coastal areas, mornings and evenings are pleasant." : "You might want to stay hydrated if you're heading out!"}`;
   } else if (current.temperature <= 10) {
-    intro += ` It's chilly at ${Math.round(current.temperature)}°C with ${condition.toLowerCase()}. Might want to grab a jacket!`;
+    intro += ` It's chilly at ${Math.round(current.temperature)}°C with ${condition.toLowerCase()}. ${isTravel ? "Pack warm layers — woolens, jackets, and thermals are essential!" : "Might want to grab a jacket!"}`;
   } else if (current.weatherCode >= 61 && current.weatherCode <= 65) {
-    intro += ` Heads up — it's raining in ${location.name} right now. ${current.precipitation > 0 ? `We're getting ${current.precipitation}mm of rain.` : "You'll want to bring an umbrella!"}`;
+    intro += ` Heads up — it's raining in ${location.name} right now. ${current.precipitation > 0 ? `We're getting ${current.precipitation}mm of rain.` : "You'll want to bring an umbrella!"} ${isTravel ? "Carry rain gear and waterproof footwear." : ""}`;
   } else if (current.weatherCode >= 95) {
-    intro += ` ⚠️ There's a thunderstorm in ${location.name} right now. Please stay safe and avoid outdoor activities!`;
+    intro += ` ⚠️ There's a thunderstorm in ${location.name} right now. ${isTravel ? "I'd recommend delaying outdoor plans. Stay safe and explore indoor attractions instead!" : "Please stay safe and avoid outdoor activities!"}`;
   } else if (current.uvIndex >= 8) {
-    intro += ` Just a heads up — the UV index is very high at ${current.uvIndex}. If you're going outside, sunscreen is a must!`;
+    intro += ` Just a heads up — the UV index is very high at ${current.uvIndex}. ${isTravel ? "Carry sunscreen, sunglasses, and a hat if you're exploring outdoors!" : "If you're going outside, sunscreen is a must!"}`;
   } else if (current.weatherCode <= 1) {
-    intro += ` It's a beautiful ${condition.toLowerCase()} day there — perfect weather to be outside!`;
+    intro += ` It's a beautiful ${condition.toLowerCase()} day there — ${isTravel ? "perfect conditions for sightseeing and outdoor activities!" : "perfect weather to be outside!"}`;
   } else {
     intro += ` The conditions are ${condition.toLowerCase()} with temperatures around ${Math.round(current.temperature)}°C.`;
+  }
+  
+  // Add forecast summary for travel queries
+  if (isTravel && daily && daily.length >= 3) {
+    const avgHigh = daily.slice(0, 7).reduce((sum, d) => sum + d.temperatureMax, 0) / Math.min(daily.length, 7);
+    const avgLow = daily.slice(0, 7).reduce((sum, d) => sum + d.temperatureMin, 0) / Math.min(daily.length, 7);
+    const rainyDays = daily.slice(0, 7).filter(d => d.precipitationSum > 1).length;
+    intro += `\n\n📊 **Week ahead:** Average high ${avgHigh.toFixed(0)}°C / low ${avgLow.toFixed(0)}°C`;
+    if (rainyDays > 0) intro += `, with ${rainyDays} rainy day${rainyDays > 1 ? 's' : ''} expected`;
+    intro += `. `;
   }
   
   return intro;
@@ -424,8 +460,77 @@ function generateCurrentResponse(
   }
 
   const query = userQuery.toLowerCase();
+  
+  // Agriculture advisory
   if (query.includes("farm") || query.includes("crop") || query.includes("agri") || query.includes("soil") || query.includes("irrigation") || query.includes("harvest")) {
     text += generateAgriAdvisory(data);
+  }
+  
+  // Travel advisory — comprehensive for trip planning questions
+  if (/visit|travel|trip|tour|vacation|holiday|plan.*go|should.*go|explore|sightseeing|adventure|itinerary|destination|best.*time/i.test(query)) {
+    text += `\n\n---\n\n`;
+    text += `**🧳 Travel Advisory for ${location.name}:**\n\n`;
+    
+    // Weather suitability
+    if (current.temperature >= 15 && current.temperature <= 30 && current.weatherCode <= 3) {
+      text += `✅ **Weather Rating: Excellent** — Ideal weather for sightseeing and outdoor activities!\n\n`;
+    } else if (current.temperature >= 10 && current.temperature <= 35) {
+      text += `👍 **Weather Rating: Good** — Comfortable for most activities with minor precautions.\n\n`;
+    } else if (current.temperature > 35) {
+      text += `⚠️ **Weather Rating: Hot** — Plan outdoor activities for early morning or evening. Carry water and sunscreen.\n\n`;
+    } else if (current.temperature < 10) {
+      text += `🧥 **Weather Rating: Cold** — Pack warm clothes! Layer up with thermals, jackets, and woolens.\n\n`;
+    }
+    
+    // What to pack
+    text += `**🎒 What to pack:**\n`;
+    if (current.temperature < 15) text += `• Warm layers, jacket, thermals, scarf, gloves\n`;
+    if (current.temperature >= 15 && current.temperature <= 30) text += `• Light cotton clothes, sunglasses, comfortable walking shoes\n`;
+    if (current.temperature > 30) text += `• Light breathable clothes, hat, sunscreen SPF 50+, water bottle\n`;
+    if (current.uvIndex >= 6) text += `• Sunscreen SPF 30+, sunglasses, hat\n`;
+    if (current.weatherCode >= 51 && current.weatherCode <= 67) text += `• Umbrella, rain jacket, waterproof bag\n`;
+    if (current.humidity > 75) text += `• Moisture-wicking clothes, insect repellent\n`;
+    text += `• Camera, power bank, valid ID proof\n\n`;
+    
+    // Best time to visit this month
+    if (daily && daily.length >= 7) {
+      const bestDays = daily.filter((d, i) => i < 7 && d.temperatureMax <= 30 && d.temperatureMax >= 15 && d.weatherCode < 61);
+      if (bestDays.length >= 3) {
+        text += `**📅 This week:** ${bestDays.length} out of 7 days look great for outdoor activities!\n`;
+      } else {
+        text += `**📅 This week:** Weather is a bit ${current.temperature > 30 ? 'hot' : current.temperature < 10 ? 'cold' : 'unpredictable'} — plan indoor activities as backup.\n`;
+      }
+    }
+    
+    // Safety tips
+    text += `\n**🛡️ Safety tips:**\n`;
+    text += `• Keep emergency contacts handy (Police: 100, Ambulance: 108)\n`;
+    text += `• Share your live location with family/friends\n`;
+    if (current.weatherCode >= 95) text += `• Avoid open areas during thunderstorms\n`;
+    if (current.windSpeed >= 40) text += `• Be cautious near loose structures in strong winds\n`;
+    text += `• Carry basic medicines and stay hydrated\n\n`;
+    
+    // Suggested follow-up
+    text += `**💡 Want more details?** Ask me about:\n`;
+    text += `• "Best places to visit in ${location.name}"\n`;
+    text += `• "7-day forecast for ${location.name}"\n`;
+    text += `• "Food and culture of ${location.name}"\n`;
+  }
+
+  // Advisory for should-I type questions
+  if (/should.*i|is.*it.*safe|is.*it.*worth|can.*i.*go/i.test(query) && !/visit|travel|trip/i.test(query)) {
+    text += `\n\n**📋 My recommendation:**\n`;
+    if (current.temperature >= 15 && current.temperature <= 30 && current.weatherCode < 61) {
+      text += `Yes, absolutely! The weather is pleasant right now — great time to go out.`;
+    } else if (current.temperature > 35) {
+      text += `It's quite hot. If you must go out, carry water, wear light clothes, and avoid peak sun hours (11am-3pm).`;
+    } else if (current.temperature < 10) {
+      text += `It's cold — bundle up properly. Carry warm drinks and limit outdoor exposure.`;
+    } else if (current.weatherCode >= 61) {
+      text += `Rainy conditions — carry an umbrella and waterproof gear. Roads might be slippery.`;
+    } else {
+      text += `Conditions are decent. Standard precautions apply — stay aware and enjoy!`;
+    }
   }
 
   return {
@@ -704,10 +809,24 @@ function getFallbackResponse(userMessage: string): string {
   if (/weather|rain|snow|temperature|forecast|wind|sun|cloud|storm|mausam|barish|garmi|thandi/i.test(msg)) {
     // Check if it's a question asking for recommendations, comparisons, or general knowledge
     if (/which|what|where|best|worst|top|most|least|recommend|suggest|good place|nice weather|pleasant|visit|travel|holiday|vacation|tour|explore|enjoy|relax/i.test(msg)) {
-      return "Great question! Here are some places known for their excellent weather:\n\nYear-round pleasant climate:\n- Bali, Indonesia: tropical paradise, warm and sunny\n- Canary Islands, Spain: mild winters, warm summers\n- San Diego, USA: near-perfect temperatures all year\n- Medellin, Colombia: City of Eternal Spring\n- Mauritius: beautiful tropical island\n\nBest weather in India:\n- Shimla and Manali: cool mountain air, snow in winter\n- Ooty and Kodaikanal: pleasant hill station weather\n- Goa: warm beaches, best from Nov to Feb\n- Ladakh: stunning landscapes, best in summer\n- Coorg, Karnataka: misty hills, green and cool\n\nBest time to visit: Hill stations Oct-Jun, Beaches Nov-Feb, Desert Oct-Mar\n\nWant me to check the current weather at any of these places?";
+      const month = new Date().getMonth();
+      let seasonalAdvice = "";
+      // Indian seasonal travel advice
+      if (month >= 2 && month <= 4) {
+        seasonalAdvice = "**🌸 March-May (Summer):**\n• Hill stations are perfect (Shimla, Manali, Ooty, Darjeeling)\n• Beach destinations are hot — avoid midday\n• Ladakh opens up for road trips\n• Avoid central India plains — extreme heat (40°C+)\n";
+      } else if (month >= 5 && month <= 8) {
+        seasonalAdvice = "**🌧️ June-September (Monsoon):\n• Kerala and Western Ghats are stunning with lush greenery\n• Ladakh is at its best — clear skies, no rain\n• Avoid coastal areas — heavy rainfall and rough seas\n• Meghalaya (Cherrapunji) is magical in monsoon\n";
+      } else if (month >= 9 && month <= 11) {
+        seasonalAdvice = "**🍂 October-November (Post-Monsoon):\n• Best time for Rajasthan (Jaipur, Udaipur, Jaisalmer)\n• Goa beaches are perfect — less crowds\n• Northeast India is beautiful with autumn colors\n• Delhi, Agra, Varanasi have pleasant weather\n";
+      } else {
+        seasonalAdvice = "**❄️ December-February (Winter):\n• Perfect for South India (Goa, Kerala, Pondicherry)\n• Rajasthan desert camping under stars\n• Shimla and Manali for snow lovers\n• Avoid north India plains if you dislike cold and fog\n";
+      }
+      
+      return `Great question! Here's my curated guide based on the current season:\n\n${seasonalAdvice}\n**🌍 Top picks worldwide this month:**\n• Bali, Indonesia — tropical paradise, warm and sunny\n• Canary Islands, Spain — mild winters, warm summers\n• Queenstown, New Zealand — adventure capital\n• Kyoto, Japan — cherry blossoms (March-April)\n
+**🗺️ Quick tips:**\n• Want specific weather? Tell me a city name!\n• "Weather in Shimla" → real-time conditions\n• "Should I visit Goa this month?" → full travel advisory\n• "7-day forecast for Manali" → weekly outlook\n\nJust name a place and I'll give you the full picture!`;
     }
     // Otherwise ask for a location
-    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for my village in Punjab\"\n• \"Is it raining in London?\"\n\nI can find weather for **any location** — just tell me the name!";
+    return "I'd love to help with weather information! Could you tell me which city or location you'd like to know about?\n\nFor example:\n• \"Weather in Mumbai\"\n• \"Forecast for my village in Punjab\"\n• \"Should I visit Shimla this month?\" (gives full travel advice!)\n• \"Is it raining in London?\"\n\nI can find weather for **any location** — just tell me the name!";
   }
   
   // Help/capabilities
@@ -720,17 +839,34 @@ function getFallbackResponse(userMessage: string): string {
     return "I'm **Weather GPT** 🌤️ — an intelligent weather assistant built by **Team Craxzy** for the Smart India Hackathon.\n\nI can help you with:\n• Real-time weather for any location\n• 7-day forecasts\n• Agriculture advisories for farmers\n• Disaster alerts\n• General knowledge questions\n\nAsk me anything!";
   }  // Math
   if (/\d+\s*[+\-*/^%]\s*\d+/i.test(msg) || /calculate|math|solve/i.test(msg)) {
-    return "I'd be happy to help with math! However, without the Gemini AI API key set up, I can only provide weather-related answers. Please add a **GEMINI_API_KEY** to enable full AI capabilities, or ask me about the weather! 🌤️";
+    // Try to solve simple math
+    const mathMatch = msg.match(/(\d+)\s*([+\-*/^%])\s*(\d+)/);
+    if (mathMatch) {
+      const a = parseFloat(mathMatch[1]);
+      const op = mathMatch[2];
+      const b = parseFloat(mathMatch[3]);
+      let result = 0;
+      switch(op) {
+        case '+': result = a + b; break;
+        case '-': result = a - b; break;
+        case '*': result = a * b; break;
+        case '/': result = b !== 0 ? a / b : NaN; break;
+        case '%': result = b !== 0 ? a % b : NaN; break;
+        case '^': result = Math.pow(a, b); break;
+      }
+      return `🧮 **${a} ${op} ${b} = ${isNaN(result) ? 'undefined (division by zero)' : result}**\n\nNeed help with anything else? I can also help with weather, travel planning, and more!`;
+    }
+    return "I'd be happy to help with math! I can solve basic calculations. Just type something like `25 + 37` or `100 / 4` and I'll calculate it for you! 🧮";
   }
 
   // Climate/weather knowledge questions
   if (/climate|monsoon|cyclone|flood|drought|heatwave|el.?ni|la.?ni|global.?warming|greenhouse/i.test(msg)) {
-    return "Great question about climate! 🌍\n\nHowever, I need the **GEMINI_API_KEY** set up to give you a detailed answer. In the meantime, I can help with:\n\n• **Real-time weather** for any location\n• **Forecasts** and conditions\n• **Agriculture advisories**\n\nTry asking: \"Weather in Mumbai\" or \"7-day forecast for Delhi\"\n\nFor the full AI experience, please add a Gemini API key in your environment variables!";
+    return "Great question about climate! 🌍\n\nI can help you with:\n\n• **Real-time weather** for any location\n• **Forecasts** and conditions\n• **Agriculture advisories**\n• **Climate trends** and historical data\n• **Severe weather alerts** across India\n\nTry asking:\n• \"Weather in Mumbai\"\n• \"7-day forecast for Delhi\"\n• \"Climate trend in Chennai last year\"\n• \"Is the weather critical anywhere in India?\"\n\nJust tell me the location and what you'd like to know!";
   }
 
   // General knowledge questions
   if (/who|what|when|where|why|how|which|explain|tell me about|describe/i.test(msg)) {
-    return "I'd love to answer that! 🧠\n\nFor the best answers to general knowledge questions, please add a **GEMINI_API_KEY** to your environment variables. This enables my full AI brain!\n\nIn the meantime, I'm great at:\n\n• **Weather** for any location in India or worldwide\n• **7-day forecasts** with detailed breakdowns\n• **Agriculture advisories** for farmers\n• **Disaster alerts** — cyclones, floods, heatwaves\n\nWhat would you like to know?";
+    return "Great question! 🧠\n\nI'm Weather GPT and I can help you with:\n\n• **Weather** — real-time conditions for any location\n• **Forecasts** — 7-day predictions with details\n• **Travel planning** — should you visit? what to pack?\n• **Agriculture** — crop-specific weather advice\n• **Alerts** — cyclone, flood, heatwave warnings\n• **Climate** — trends and historical data\n\nJust tell me what you'd like to know and where!";
   }
 
   // Default — encourage weather or general questions
