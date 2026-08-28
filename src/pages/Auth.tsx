@@ -18,6 +18,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { ArrowRight, Cloud, Loader2, Mail, Globe, Zap, Shield, Mic, Languages, Star } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { useLanguage } from "@/lib/i18n";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -45,6 +46,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { translate } = useLanguage();
 
   const handleEmailSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -140,8 +142,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               </span>
             </h1>
             <p className="mt-4 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-md mx-auto lg:mx-0">
-              Ask any weather question in plain language. Get real-time conditions,
-              forecasts, agriculture advisories, and disaster alerts.
+              {translate('landing.subheadline')}
             </p>
 
             {/* Feature pills */}
@@ -169,9 +170,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         <Cloud className="h-6 w-6 text-primary-foreground" />
                       </div>
                     </div>
-                    <CardTitle className="text-xl font-bold">Welcome to Weather GPT</CardTitle>
+                    <CardTitle className="text-xl font-bold">{translate('auth.welcome')}</CardTitle>
                     <CardDescription className="text-sm mt-2">
-                      Enter your email to get started, or continue as a guest
+                      {translate('auth.enterEmail')}
                     </CardDescription>
                   </CardHeader>
                   <form onSubmit={handleEmailSubmit}>
@@ -199,7 +200,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
-                            Send verification code
+                            {translate('auth.sendCode')}
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </>
                         )}
@@ -211,7 +212,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
                           <span className="bg-card px-3 text-muted-foreground">
-                            or
+                            {translate('auth.or')}
                           </span>
                         </div>
                       </div>
@@ -224,7 +225,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         disabled={isLoading}
                       >
                         <span className="mr-2">👤</span>
-                        Continue as Guest
+                        {translate('auth.continueAsGuest')}
                       </Button>
                     </CardContent>
                   </form>
@@ -232,9 +233,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
               ) : (
                 <>
                   <CardHeader className="text-center pt-8">
-                    <CardTitle className="text-xl font-bold">Check your email</CardTitle>
+                    <CardTitle className="text-xl font-bold">{translate('auth.checkEmail')}</CardTitle>
                     <CardDescription className="mt-1">
-                      We've sent a 6-digit code to{" "}
+                      {translate('auth.codeSentTo')}{" "}
                       <span className="font-medium text-foreground">{step.email}</span>
                     </CardDescription>
                   </CardHeader>
@@ -269,7 +270,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         <p className="text-sm text-red-500 text-center">{error}</p>
                       )}
                       <p className="text-sm text-muted-foreground text-center">
-                        Didn't receive a code?{" "}
+                        {translate('auth.didntReceive')}{" "}
                         <Button
                           variant="link"
                           className="p-0 h-auto text-primary font-medium"
@@ -289,7 +290,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <>
-                            Verify & continue
+                            {translate('auth.verifyContinue')}
                             <ArrowRight className="ml-2 h-4 w-4" />
                           </>
                         )}
@@ -301,7 +302,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                         disabled={isLoading}
                         className="w-full rounded-lg text-muted-foreground"
                       >
-                        Use different email
+                        {translate('auth.useDifferentEmail')}
                       </Button>
                     </CardFooter>
                   </form>

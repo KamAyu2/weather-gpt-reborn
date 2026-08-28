@@ -1,6 +1,7 @@
 import { Droplets, Wind, Eye, Gauge, Sunrise, Sunset, Thermometer, AlertTriangle } from "lucide-react";
 import { WeatherIcon, getWeatherIconInfo } from "./WeatherIcon";
 import type { WeatherData } from "@/convex/weather";
+import { useLanguage } from "@/lib/i18n";
 
 interface WeatherCardProps {
   weatherData: WeatherData;
@@ -20,23 +21,24 @@ function getUVLevel(uv: number): { label: string; color: string } {
   return { label: "Extreme", color: "text-red-600" };
 }
 
-function getWeatherDescription(code: number): string {
-  const descriptions: Record<number, string> = {
-    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-    45: "Foggy", 48: "Rime fog",
-    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
-    61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
-    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
-    80: "Rain showers", 81: "Moderate showers", 82: "Heavy showers",
-    95: "Thunderstorm", 96: "Thunderstorm with hail", 99: "Severe thunderstorm",
+function getWeatherDescription(code: number, translate?: (key: string) => string): string {
+  const keyMap: Record<number, string> = {
+    0: 'weather.clearSky', 1: 'weather.mainlyClear', 2: 'weather.partlyCloudy', 3: 'weather.overcast',
+    45: 'weather.foggy', 48: 'weather.foggy',
+    51: 'weather.lightDrizzle', 53: 'weather.lightDrizzle', 55: 'weather.lightDrizzle',
+    61: 'weather.moderateRain', 63: 'weather.moderateRain', 65: 'weather.heavyRain',
+    71: 'weather.slightSnow', 73: 'weather.moderateSnow', 75: 'weather.heavySnow',
+    80: 'weather.rainShowers', 81: 'weather.rainShowers', 82: 'weather.heavyRain',
+    95: 'weather.thunderstorm', 96: 'weather.thunderstorm', 99: 'weather.severeThunderstorm',
   };
-  return descriptions[code] || "Unknown";
+  const key = keyMap[code];
+  return key && translate ? translate(key) : (keyMap[code] || 'Unknown');
 }
 
-function formatDay(index: number): string {
-  if (index === 0) return "Today";
-  if (index === 1) return "Tmrw";
-  return new Date(Date.now() + index * 86400000).toLocaleDateString("en-US", { weekday: "short" });
+function formatDay(index: number, translate?: (key: string) => string): string {
+  if (index === 0) return translate ? translate('weather.todayLabel') : 'Today';
+  if (index === 1) return translate ? translate('weather.tmrwLabel') : 'Tmrw';
+  return new Date(Date.now() + index * 86400000).toLocaleDateString('en-US', { weekday: 'short' });
 }
 
 function formatTime(iso: string): string {
@@ -82,6 +84,7 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
   const { location, current, daily } = weatherData;
   const today = daily[0];
   const uv = getUVLevel(current.uvIndex);
+  const { translate } = useLanguage();
 
   return (
     <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 p-5 shadow-md">
@@ -92,7 +95,7 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
             <span className="text-3xl font-semibold tracking-tight text-foreground drop-shadow-sm">{Math.round(current.temperature)}</span>
             <span className="text-lg font-medium text-foreground/70">°C</span>
           </div>
-          <p className="mt-0.5 text-xs text-foreground/70 font-medium">{getWeatherDescription(current.weatherCode)}</p>
+          <p className="mt-0.5 text-xs text-foreground/70 font-medium">{getWeatherDescription(current.weatherCode, translate)}</p>
         </div>
         <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${getWeatherIconInfo(current.weatherCode).bg}`}>
           <WeatherIcon code={current.weatherCode} size={28} />
@@ -108,9 +111,9 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
       {today && (
         <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/30 px-3 py-2">
           <div className="flex items-center gap-3 text-[11px]">
-            <span className="text-foreground/70 font-medium">High {Math.round(today.temperatureMax)}°</span>
+            <span className="text-foreground/70 font-medium">{translate('weather.highLabel')} {Math.round(today.temperatureMax)}°</span>
             <span className="text-foreground/30">·</span>
-            <span className="text-foreground/70 font-medium">Low {Math.round(today.temperatureMin)}°</span>
+            <span className="text-foreground/70 font-medium">{translate('weather.lowLabel')} {Math.round(today.temperatureMin)}°</span>
           </div>
           {today.sunrise && (
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
@@ -131,14 +134,15 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
   const today = daily[0];
   const uv = getUVLevel(current.uvIndex);
   const windDir = getWindDirection(current.windDirection);
+  const { translate } = useLanguage();
 
   // Determine alerts
   const alerts: Array<{ type: "heat" | "cold" | "wind" | "uv" | "storm"; message: string }> = [];
-  if (current.temperature >= 40) alerts.push({ type: "heat", message: "Heat advisory: Extremely high temperature. Stay hydrated and avoid prolonged outdoor exposure." });
-  else if (current.temperature <= 0) alerts.push({ type: "cold", message: "Cold advisory: Freezing conditions. Take precautions against frostbite and hypothermia." });
-  if (current.windSpeed >= 50) alerts.push({ type: "wind", message: "Wind advisory: Strong winds detected. Secure loose objects and avoid outdoor activities." });
-  if (current.uvIndex >= 8) alerts.push({ type: "uv", message: `UV alert: Very high UV exposure (${current.uvIndex}). Use SPF 30+ sunscreen and wear protective clothing.` });
-  if (current.weatherCode >= 95) alerts.push({ type: "storm", message: "Severe weather alert: Thunderstorm activity in the area. Seek shelter indoors immediately." });
+  if (current.temperature >= 40) alerts.push({ type: "heat", message: translate('weather.heatAdvisory') });
+  else if (current.temperature <= 0) alerts.push({ type: "cold", message: translate('weather.coldAdvisory') });
+  if (current.windSpeed >= 50) alerts.push({ type: "wind", message: translate('weather.windAdvisory') });
+  if (current.uvIndex >= 8) alerts.push({ type: "uv", message: `${translate('weather.uvAlert')} (${current.uvIndex}).` });
+  if (current.weatherCode >= 95) alerts.push({ type: "storm", message: translate('weather.stormAlert') });
 
   return (
     <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 overflow-hidden shadow-md">
@@ -156,7 +160,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
               <span className="text-xl font-medium text-foreground/70">°C</span>
             </div>
             <p className="mt-1 text-sm text-foreground/70 font-medium">
-              Feels like {Math.round(current.apparentTemperature)}° · {getWeatherDescription(current.weatherCode)}
+              {translate('weather.feelsLike')} {Math.round(current.apparentTemperature)}° · {getWeatherDescription(current.weatherCode, translate)}
             </p>
           </div>
           <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${getWeatherIconInfo(current.weatherCode).bg}`}>
@@ -206,12 +210,12 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
         <div className="grid grid-cols-7 gap-1">
           {daily.slice(0, 7).map((day, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 rounded-lg px-1 py-2 transition-colors hover:bg-muted/30">
-              <span className="text-[10px] font-medium text-muted-foreground">{formatDay(i)}</span>
+              <span className="text-[10px] font-medium text-muted-foreground">{formatDay(i, translate)}</span>
               <WeatherIcon code={day.weatherCode} size={18} />
               <span className="text-xs font-medium">{Math.round(day.temperatureMax)}°</span>
               <span className="text-[10px] text-muted-foreground/50">{Math.round(day.temperatureMin)}°</span>
               {day.precipitationProbabilityMax > 20 && (
-                <span className="text-[9px] text-blue-500">{day.precipitationProbabilityMax}%</span>
+                <span className="text-[9px] text-blue-500">{day.precipitationProbabilityMax}% {translate('weather.rainChanceLabel')}</span>
               )}
             </div>
           ))}

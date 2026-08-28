@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Mic, MicOff } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 interface VoiceInputProps {
   onResult: (text: string) => void;
@@ -32,6 +33,7 @@ export function VoiceInput({ onResult, disabled = false, language = "en-US" }: V
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const onResultRef = useRef(onResult);
+  const { translate } = useLanguage();
 
   // Keep onResult ref current without recreating recognition
   useEffect(() => {
@@ -90,7 +92,15 @@ export function VoiceInput({ onResult, disabled = false, language = "en-US" }: V
   }, [isListening]);
 
   if (!isSupported) {
-    return null;
+    return (
+      <button
+        disabled
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground/30 cursor-not-allowed"
+        title="Voice input not supported in this browser. Use Chrome or Edge."
+      >
+        <Mic className="h-3.5 w-3.5" />
+      </button>
+    );
   }
 
   return (
@@ -102,7 +112,8 @@ export function VoiceInput({ onResult, disabled = false, language = "en-US" }: V
           ? "bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30"
           : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
       } disabled:opacity-50 disabled:cursor-not-allowed`}
-      title={isListening ? "Stop listening" : "Start voice input"}
+      title={isListening ? translate('voice.stopListening') : translate('voice.startListening')}
+      aria-label={isListening ? translate('voice.stopListening') : translate('voice.startListening')}
     >
       {isListening ? (
         <MicOff className="h-3.5 w-3.5" />

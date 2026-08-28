@@ -258,7 +258,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
           className="mt-10"
         >
           <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Severe Weather Monitor
+            {translate('dashboard.severeWeather')}
           </h2>
           <SevereWeatherMap />
         </motion.div>

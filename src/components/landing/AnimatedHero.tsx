@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { Cloud, ArrowRight } from "lucide-react";
+import { useLanguage } from "@/lib/i18n";
 
 const TYPING_TEXTS = [
   "What's the weather in Mumbai?",
@@ -64,6 +65,8 @@ function TypingDemo() {
 }
 
 export function AnimatedHero() {
+  const { translate } = useLanguage();
+
   return (
     <div className="relative min-h-[85dvh] flex items-center justify-center">
       <div className="relative z-10 text-center px-6 max-w-3xl mx-auto">
@@ -71,7 +74,7 @@ export function AnimatedHero() {
         <div className="mb-8">
           <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-4 py-1.5 text-sm text-muted-foreground">
             <span className="h-2 w-2 rounded-full bg-accent animate-pulse" />
-            AI-Powered Weather
+            {translate('landing.aiBadge')}
           </span>
         </div>
 
@@ -80,14 +83,13 @@ export function AnimatedHero() {
           Weather intelligence
           <br />
           <span className="text-primary">
-            your team can act on.
+            {translate('landing.headline')}
           </span>
         </h1>
 
         {/* Subheadline */}
         <p className="mt-6 text-lg leading-relaxed text-muted-foreground max-w-xl mx-auto">
-          Ask any weather question in plain language. Get real-time conditions,
-          forecasts, agriculture advisories, and disaster alerts.
+          {translate('landing.subheadline')}
         </p>
 
         {/* Typing demo */}
@@ -101,10 +103,10 @@ export function AnimatedHero() {
             onClick={() => window.location.href = "/auth?returnTo=/dashboard"}
             className="inline-flex h-12 items-center gap-2 rounded-lg bg-primary px-7 text-base font-medium text-primary-foreground transition-opacity w-full sm:w-auto justify-center magnetic-btn"
           >
-            Start using Weather GPT
+            {translate('landing.startButton')}
             <ArrowRight className="h-4 w-4" />
           </button>
-          <span className="text-sm text-muted-foreground">No credit card required</span>
+          <span className="text-sm text-muted-foreground">{translate('landing.noCreditCard')}</span>
         </div>
 
         {/* Feature pills */}

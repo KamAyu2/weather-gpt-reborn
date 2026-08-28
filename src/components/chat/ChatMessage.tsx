@@ -5,6 +5,7 @@ import { AgriAdvisory } from "@/components/weather/AgriAdvisory";
 import { DisasterAlerts } from "@/components/weather/DisasterAlerts";
 import { WeatherChart } from "@/components/weather/WeatherChart";
 import type { WeatherData } from "@/convex/weather";
+import { useLanguage } from "@/lib/i18n";
 
 interface ChatMessageProps {
   role: "user" | "assistant";
@@ -83,6 +84,7 @@ function parseMarkdown(text: string): React.ReactNode[] {
 export function ChatMessage({ role, content, timestamp, starred, messageId, onToggleStar, metadata }: ChatMessageProps) {
   const isUser = role === "user";
   const hasWeatherData = !isUser && metadata?.weatherData;
+  const { translate } = useLanguage();
 
   // Extract conversational text (remove the weather card formatted parts)
   // The conversational text is everything before the card-formatted data
@@ -158,7 +160,7 @@ export function ChatMessage({ role, content, timestamp, starred, messageId, onTo
                   ? "text-amber-500 hover:text-amber-600"
                   : "text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-muted-foreground/60"
               }`}
-              title={starred ? "Remove from saved" : "Save this message"}
+              title={starred ? translate('chat.removeFromSaved') : translate('chat.saveMessage')}
             >
               <Star className={`h-3 w-3 ${starred ? "fill-current" : ""}`} />
             </button>

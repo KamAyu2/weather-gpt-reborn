@@ -1,5 +1,6 @@
 import { ArrowUp, Loader2 } from "lucide-react";
 import { useRef, useEffect } from "react";
+import { useLanguage } from "@/lib/i18n";
 
 interface ChatInputProps {
   value: string;
@@ -21,6 +22,7 @@ export function ChatInput({
   voiceInput,
 }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { translate } = useLanguage();
 
   // Auto-resize textarea
   useEffect(() => {
@@ -70,7 +72,7 @@ export function ChatInput({
           </button>
         </div>
         <p className="mt-2 text-center text-[10px] text-muted-foreground/40">
-          Weather data by Open-Meteo · Not for aviation or safety-critical use
+          {translate('chat.disclaimer')}
         </p>
       </div>
     </div>
