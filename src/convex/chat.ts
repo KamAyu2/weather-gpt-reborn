@@ -1255,13 +1255,9 @@ export const processMessage = action({
       }
     }
 
-    // ── Route 2: No location → general knowledge via LLM ──
-    const text = await callLLM(content, lang, args.apiKey);
-    await ctx.runMutation(api.chat.saveAssistantMessage, {
-      conversationId: args.conversationId,
-      content: text,
-    });
-    return { text, metadata: null };
+    // ── Route 2: No location → signal frontend to call Gemini directly ──
+    // Convex server actions cannot reach Gemini API, so the frontend handles this.
+    return { text: null, metadata: null, useClientLLM: true };
   },
 });
 

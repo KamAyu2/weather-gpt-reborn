@@ -70,6 +70,7 @@ export default function Dashboard() {
   const sendMessage = useMutation(api.chat.sendMessage);
   const processMessage = useAction(api.chat.processMessage);
   const toggleStar = useMutation(api.chat.toggleStar);
+  const saveAssistantMessage = useMutation(api.chat.saveAssistantMessage);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -104,12 +105,38 @@ export default function Dashboard() {
         content: text,
       });
 
-      await processMessage({
+      const result = await processMessage({
         conversationId: convId,
         content: text,
         language: language,
         apiKey: apiKey || undefined,
       });
+
+      // If backend says "use client LLM", call Gemini directly from the browser
+      const resultAny = result as Record<string, unknown>;
+      if (resultAny?.useClientLLM) {
+        const { callGeminiFromClient, getGeminiApiKey } = await import("@/lib/gemini");
+        const llmKey = getGeminiApiKey();
+        if (llmKey) {
+          const llmResponse = await callGeminiFromClient(text, language);
+          if (llmResponse) {
+            await saveAssistantMessage({
+              conversationId: convId,
+              content: llmResponse,
+            });
+          } else {
+            await saveAssistantMessage({
+              conversationId: convId,
+              content: "I couldn't generate a response. Please check your Gemini API key in the sidebar settings.",
+            });
+          }
+        } else {
+          await saveAssistantMessage({
+            conversationId: convId,
+            content: "For general knowledge questions, please add your Gemini API key in the sidebar settings (click the ⭐ icon). Weather features work without it!",
+          });
+        }
+      }
     } catch (error) {
       console.error("Failed to send message:", error);
     } finally {
