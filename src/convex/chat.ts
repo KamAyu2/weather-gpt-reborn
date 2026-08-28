@@ -80,6 +80,40 @@ const INDIAN_STATES = [
   "tamil nadu","telangana","tripura","uttar pradesh","uttarakhand","west bengal","delhi",
 ];
 
+// Prefer Indian geocoding results for Indian city names
+const INDIAN_CITY_NAMES = new Set([
+  "mumbai","delhi","bangalore","chennai","kolkata","hyderabad","pune","ahmedabad","jaipur","lucknow",
+  "goa","panaji","kanpur","nagpur","indore","bhopal","visakhapatnam","patna","coimbatore","kochi",
+  "chandigarh","dehradun","mysore","udaipur","shimla","manali","ooty","kodaikanal","darjeeling",
+  "gangtok","shillong","bhubaneswar","cuttack","siliguri","jammu","leh","haridwar","rishikesh",
+  "pushkar","ajmer","jaisalmer","kota","bikaner","mathura","prayagraj","hampi","mangalore",
+  "salem","tiruchirappalli","tirunelveli","thanjavur","vellore","rameswaram","kanyakumari",
+  "warangal","guntur","nellore","tirupati","raipur","ranchi","howrah","jabalpur","gwalior",
+  "vijayawada","jodhpur","madurai","amritsar","srinagar","aurangabad","dhanbad","ludhiana",
+  "agra","nashik","faridabad","meerut","rajkot","varanasi",
+]);
+
+function preferIndianResult(results: Array<{name: string; country?: string; country_code?: string; admin1?: string; latitude?: number; longitude?: number}>, query: string): typeof results[0] | null {
+  if (!results || results.length === 0) return null;
+  const q = query.toLowerCase().trim();
+  // If querying an Indian city name, prefer results with country_code IN
+  if (INDIAN_CITY_NAMES.has(q)) {
+    const indian = results.find(r => r.country_code?.toUpperCase() === "IN" || r.country?.toLowerCase() === "india");
+    if (indian) return indian;
+  }
+  // If querying an Indian state name, prefer India
+  if (INDIAN_STATES.some(s => q.includes(s))) {
+    const indian = results.find(r => r.country_code?.toUpperCase() === "IN" || r.country?.toLowerCase() === "india");
+    if (indian) return indian;
+  }
+  // For general queries, prefer India if any result is in India and the query is short
+  if (q.split(/\s+/).length <= 2) {
+    const indian = results.find(r => r.country_code?.toUpperCase() === "IN" || r.country?.toLowerCase() === "india");
+    if (indian) return indian;
+  }
+  return results[0];
+}
+
 const IRRIGATION_TYPES = ["irrigated","rainfed","sprinkler","drip"];
 const SOIL_TYPES = ["clay","sandy","loam","silt","peaty"];
 const YES_ANSWERS = /^(yes|yeah|yep|yup|sure|ok|okay|y|haan|ha|ji|please|do it|go ahead|definitely|absolutely)$/i;
@@ -582,10 +616,46 @@ export const processMessage = action({
           "- End with: '*Data from Open-Meteo real-time weather API, scanning ' + cityWeatherResults.length + ' Indian cities. Not an official warning.*'",
         ].join("\n");
 
-        const text = await callLLM(llmPrompt, lang, args.apiKey);
-        if (text && !text.startsWith("**Error:**")) {
-          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
-          return { text, metadata: null };
+        const llmText = await callLLM(llmPrompt, lang, args.apiKey);
+        // If LLM succeeded and didn't error, use it
+        let finalText = "";
+        if (llmText && !llmText.startsWith("**Error:**") && !llmText.startsWith("I'm having trouble") && !llmText.startsWith("GEMINI_API_KEY")) {
+          finalText = llmText;
+        } else {
+          // Deterministic fallback: format the data ourselves
+          let fb = "**Weather Analysis Across India**\n\n";
+          fb += "*Based on real-time weather data from Open-Meteo, scanning " + cityWeatherResults.length + " cities.*\n\n";
+          if (criticalCities.length > 0) {
+            fb += "**\u26a0\ufe0f Critical/Concern Areas:**\n";
+            for (const c of criticalCities) {
+              fb += "**" + c.name + "** \u2014 " + c.condition + ", " + c.temp + "\u00b0C, " + c.rainProb + "% rain, " + c.windSpeed + " km/h wind\n";
+            }
+            fb += "\n";
+          } else {
+            fb += "**\u2705 No critical conditions detected.**\n\n";
+          }
+          if (severeCities.length > 0) {
+            fb += "**\ud83d\udea8 Severe Areas:**\n";
+            for (const c of severeCities) {
+              fb += "**" + c.name + "** \u2014 " + c.condition + ", " + c.windSpeed + " km/h wind, " + c.rainProb + "% rain\n";
+            }
+            fb += "\n";
+          }
+          fb += "**\ud83d\udcca All Cities:**\n";
+          for (const c of sorted_by_rain) {
+            const flag = criticalCities.includes(c) ? " \u26a0\ufe0f" : "";
+            fb += "\u2022 **" + c.name + "**: " + c.temp + "\u00b0C, " + c.condition + ", " + c.rainProb + "% rain, " + c.windSpeed + " km/h" + flag + "\n";
+          }
+          fb += "\n**Highest Rain Probability:** " + sorted_by_rain[0].name + " (" + sorted_by_rain[0].rainProb + "%)\n";
+          fb += "**Hottest:** " + sorted_by_temp[0].name + " (" + sorted_by_temp[0].temp + "\u00b0C)\n";
+          fb += "**Strongest Wind:** " + sorted_by_wind[0].name + " (" + sorted_by_wind[0].windSpeed + " km/h)\n";
+          const now = new Date();
+          fb += "\n---\n*Source: Open-Meteo real-time weather API | Updated: " + now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) + "\nFor official warnings, check [IMD](https://mausam.imd.gov.in) and [WMO](https://severeweather.wmo.int).*";
+          finalText = fb;
+        }
+        if (finalText) {
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: finalText });
+          return { text: finalText, metadata: null };
         }
       } catch (err) {
         console.error("Global analysis error:", err);
@@ -647,9 +717,9 @@ export const processMessage = action({
         // Route A: Have all info + agriculture question -> generate response
         if (resolvedLocation && resolvedCrop) {
           try {
-            const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: resolvedLocation });
+            const results: Array<{name: string; latitude: number; longitude: number; country: string; country_code?: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: resolvedLocation });
             if (results && results.length > 0) {
-              const best = results[0];
+              const best = preferIndianResult(results, resolvedLocation) || results[0];
               const weatherData: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, { latitude: best.latitude, longitude: best.longitude, locationName: best.name, country: best.country, timezone: best.timezone || "auto" });
               const cp: string[] = [];
               cp.push("CONVERSATION CONTEXT:");
@@ -685,10 +755,51 @@ export const processMessage = action({
               cp.push("RULES: Use ONLY real data. Never invent values. Label WeatherGPT interpretation vs official sources.");
 
               const enriched = cp.join("\n");
-              const text = await callLLM(enriched, lang, args.apiKey);
-              if (text && !text.startsWith("[DEBUG]") && !text.startsWith("**Error:**")) {
-                await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } });
-                return { text, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } };
+              const agriLlmText = await callLLM(enriched, lang, args.apiKey);
+              let agriFinalText = "";
+              if (agriLlmText && !agriLlmText.startsWith("[DEBUG]") && !agriLlmText.startsWith("**Error:**") && !agriLlmText.startsWith("I'm having trouble") && !agriLlmText.startsWith("GEMINI_API_KEY")) {
+                agriFinalText = agriLlmText;
+              } else {
+                // Deterministic agriculture fallback
+                const today = weatherData.daily[0];
+                let fb = "**Agriculture Advisory for " + resolvedCrop + (resolvedStage ? " (" + resolvedStage + " stage)" : "") + " in " + best.name + "**\n\n";
+                fb += "**Location:** " + best.name + ", " + best.country + "\n";
+                fb += "**Crop:** " + resolvedCrop + "\n";
+                if (resolvedStage) fb += "**Growth Stage:** " + resolvedStage + "\n";
+                fb += "\n**Current Weather:**\n";
+                fb += "\u2022 Temperature: " + weatherData.current.temperature + "\u00b0C\n";
+                fb += "\u2022 Humidity: " + weatherData.current.humidity + "%\n";
+                fb += "\u2022 Wind: " + weatherData.current.windSpeed + " km/h\n";
+                fb += "\u2022 Condition: " + getWeatherDescription(weatherData.current.weatherCode) + "\n";
+                fb += "\n**Irrigation Advisory:**\n";
+                if (today && today.precipitationProbabilityMax > 50) {
+                  fb += "\ud83d\udca7 **Skip irrigation today.** Rain probability is " + today.precipitationProbabilityMax + "% with expected " + today.precipitationSum + "mm. Natural rainfall should suffice.\n";
+                } else if (today && today.precipitationProbabilityMax < 20) {
+                  fb += "\ud83d\udca7 **Irrigation recommended.** Low rain probability (" + today.precipitationProbabilityMax + "%). Soil moisture may deplete.\n";
+                } else {
+                  fb += "\ud83d\udca7 **Monitor conditions.** Moderate rain chance (" + (today ? today.precipitationProbabilityMax : 0) + "%). Check soil moisture before irrigating.\n";
+                }
+                fb += "\n**Weather Risk Assessment:**\n";
+                if (weatherData.current.temperature >= 35) fb += "\u26a0\ufe0f **Heat Stress Risk:** High temperature (" + weatherData.current.temperature + "\u00b0C). Ensure adequate irrigation and provide shade if possible.\n";
+                if (weatherData.current.humidity > 80) fb += "\u26a0\ufe0f **Disease Risk:** High humidity (" + weatherData.current.humidity + "%). Watch for fungal diseases.\n";
+                if (weatherData.current.windSpeed > 25) fb += "\u26a0\ufe0f **Wind Risk:** Strong winds (" + weatherData.current.windSpeed + " km/h). Avoid spraying operations.\n";
+                if (today && today.precipitationProbabilityMax > 70) fb += "\u26a0\ufe0f **Waterlogging Risk:** Heavy rain expected. Ensure proper drainage.\n";
+                fb += "\n**7-Day Outlook:**\n";
+                weatherData.daily.slice(0, 7).forEach((day: {date: string; temperatureMax: number; temperatureMin: number; weatherCode: number; precipitationProbabilityMax: number; precipitationSum: number; windSpeedMax: number}, i: number) => {
+                  const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : day.date;
+                  fb += "\u2022 **" + label + "**: " + day.temperatureMin + "-" + day.temperatureMax + "\u00b0C, Rain: " + day.precipitationProbabilityMax + "%, " + day.precipitationSum + "mm\n";
+                });
+                fb += "\n**Today's Recommended Actions:**\n";
+                if (weatherData.current.weatherCode >= 61) fb += "\u2022 Avoid field operations during rain\n";
+                fb += "\u2022 Monitor crop for signs of stress or disease\n";
+                if (weatherData.current.temperature >= 35) fb += "\u2022 Ensure adequate irrigation during peak heat\n";
+                fb += "\u2022 Check drainage systems\n";
+                fb += "\n---\n*Source: Open-Meteo Weather API | WeatherGPT agriculture advisory (AI-enhanced response unavailable)*";
+                agriFinalText = fb;
+              }
+              if (agriFinalText) {
+                await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: agriFinalText, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } });
+                return { text: agriFinalText, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } };
               }
             }
           } catch (err) { console.error("Agri weather fetch failed:", err); }
