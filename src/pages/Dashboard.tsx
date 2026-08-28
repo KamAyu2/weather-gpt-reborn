@@ -61,6 +61,7 @@ export default function Dashboard() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const conversations = useQuery(api.chat.getConversations);
+  const geminiKey = useQuery(api.chat.getGeminiKey);
   const messages = useQuery(
     api.chat.getMessages,
     activeConversation ? { conversationId: activeConversation } : "skip"
@@ -115,10 +116,11 @@ export default function Dashboard() {
       // If backend says "use client LLM", call Gemini directly from the browser
       const resultAny = result as Record<string, unknown>;
       if (resultAny?.useClientLLM) {
-        const { callGeminiFromClient, getGeminiApiKey } = await import("@/lib/gemini");
-        const llmKey = getGeminiApiKey();
+        const { callGeminiFromClient } = await import("@/lib/gemini");
+        // Use key from Convex backend, fallback to localStorage
+        const llmKey = geminiKey || localStorage.getItem("gemini_api_key") || "";
         if (llmKey) {
-          const llmResponse = await callGeminiFromClient(text, language);
+          const llmResponse = await callGeminiFromClient(text, language, llmKey);
           if (llmResponse) {
             await saveAssistantMessage({
               conversationId: convId,
@@ -127,13 +129,13 @@ export default function Dashboard() {
           } else {
             await saveAssistantMessage({
               conversationId: convId,
-              content: "I couldn't generate a response. Please check your Gemini API key in the sidebar settings.",
+              content: "I couldn't generate a response. Please try again.",
             });
           }
         } else {
           await saveAssistantMessage({
             conversationId: convId,
-            content: "For general knowledge questions, please add your Gemini API key in the sidebar settings (click the ⭐ icon). Weather features work without it!",
+            content: "General knowledge features require a Gemini API key. Please ask weather-related questions instead.",
           });
         }
       }

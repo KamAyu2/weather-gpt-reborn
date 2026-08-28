@@ -835,6 +835,13 @@ export const getMessages = query({
   },
 });
 
+export const getGeminiKey = query({
+  args: {},
+  handler: async (ctx) => {
+    return process.env.GEMINI_API_KEY || "";
+  },
+});
+
 export const getStarredMessages = query({
   args: {},
   handler: async (ctx) => {

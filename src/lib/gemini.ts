@@ -50,9 +50,10 @@ LANGUAGE: Respond entirely in ${lang}. Keep technical terms in English.`
  */
 export async function callGeminiFromClient(
   userMessage: string,
-  language: string = "en"
+  language: string = "en",
+  apiKeyOverride?: string
 ): Promise<string | null> {
-  const apiKey = getGeminiApiKey();
+  const apiKey = apiKeyOverride || getGeminiApiKey();
   if (!apiKey) return null;
 
   try {
