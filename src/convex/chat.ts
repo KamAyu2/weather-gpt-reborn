@@ -516,6 +516,7 @@ function generateHelpResponse(): string {
 
 async function callLLM(userMessage: string, language: string = "en", apiKeyOverride?: string): Promise<string> {
   const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
+  console.log("callLLM key source:", apiKeyOverride ? "override" : "env", "key_len:", apiKey?.length, "key_prefix:", apiKey?.slice(0, 6));
   if (!apiKey) {
     return `[DEBUG] No API key found. override=${!!apiKeyOverride}, env=${!!process.env.GEMINI_API_KEY}`;
   }
@@ -629,27 +630,7 @@ LANGUAGE RULE:
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => "unknown");
-      console.error("Gemini API error:", response.status, errBody);
-      // Try fallback model if primary fails
-      if (response.status === 404) {
-        const retry = await fetch(
-          "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: userMessage }] }],
-              systemInstruction: { parts: [{ text: systemPrompt }] },
-              generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 },
-            }),
-          }
-        );
-        if (retry.ok) {
-          const data = await retry.json();
-          return data.candidates?.[0]?.content?.parts?.[0]?.text || getFallbackResponse(userMessage);
-        }
-      }
-      return `**Error:** Gemini API returned status ${response.status}. Please check your API key.`;
+      console.error("Gemini API error:", response.status, errBody);      return `**Debug info:** key_len=${apiKey.length}, prefix=${apiKey.slice(0,6)}, env_key_len=${(process.env.GEMINI_API_KEY || '').length}\n\nGemini returned ${response.status}: ${errBody.slice(0, 300)}`;
     }
 
     const data = await response.json();
