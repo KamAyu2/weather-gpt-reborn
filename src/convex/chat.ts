@@ -190,6 +190,180 @@ function isGeneralIntent(msg: string): boolean {
   return false;
 }
 
+// ─── Agriculture conversation context extraction ──────────────────────────
+
+interface AgriContext {
+  location: string | null;
+  state: string | null;
+  crop: string | null;
+  cropStage: string | null;
+  soilType: string | null;
+  irrigationType: string | null;
+  lastAssistantAskedFor: string | null;
+  weatherData: import("./weather").WeatherData | null;
+}
+
+const CROP_NAMES = [
+  "rice", "wheat", "soybean", "soyabean", "cotton", "maize", "corn",
+  "sugarcane", "tomato", "potato", "groundnut", "chickpea", "mustard",
+  "onion", "chilli", "turmeric", "banana", "mango", "grape", "tea",
+  "coffee", "coconut", "pulses", "lentil", "pea", "bean", "barley",
+  "jowar", "bajra", "ragi", "millet", "sunflower", "castor", "jute",
+  "sesame", "linseed", "rapeseed", "cumin", "coriander", "ginger",
+  "garlic", "cabbage", "cauliflower", "brinjal", "okra", "bottle gourd",
+  "bitter gourd", "pumpkin", "cucumber", "watermelon", "muskmelon",
+  "grapes", "pomegranate", "guava", "papaya", "pineapple", "orange",
+  "lemon", "lime", "apple", "peach", "plum", "cherry",
+];
+
+const CROP_STAGES = [
+  "land preparation", "sowing", "germination", "seedling", "vegetative",
+  "flowering", "fruiting", "grain filling", "maturity", "harvest ready",
+  "harvesting", "post harvest", "transplanting", "tillering", "booting",
+  "heading", "ripening", "boll development", "pod development",
+  "tasseling", "silking", "nursery", "vegetative growth",
+];
+
+const INDIAN_STATES = [
+  "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh",
+  "goa", "gujarat", "haryana", "himachal pradesh", "jharkhand", "karnataka",
+  "kerala", "madhya pradesh", "maharashtra", "manipur", "meghalaya", "mizoram",
+  "nagaland", "odisha", "punjab", "rajasthan", "sikkim", "tamil nadu",
+  "telangana", "tripura", "uttar pradesh", "uttarakhand", "west bengal",
+  "delhi", "chandigarh", "puducherry",
+];
+
+const IRRIGATION_TYPES = ["irrigated", "rainfed", "sprinkler", "drip"];
+const SOIL_TYPES = ["clay", "sandy", "loam", "silt", "peaty"];
+
+const YES_ANSWERS = /^(yes|yeah|yep|yup|sure|ok|okay|y|haan|ha|ji|please|do it|go ahead|sure|definitely|absolutely)$/i;
+const NO_ANSWERS = /^(no|nah|nope|nahi|n|never|skip)$/i;
+
+// Check if a short message could be a follow-up answer to a previous question
+function isFollowUpAnswer(msg: string): boolean {
+  const trimmed = msg.trim();
+  // Very short messages (1-3 words) that don't contain weather/agri keywords
+  // and aren't question patterns are likely follow-up answers
+  if (trimmed.length > 50) return false;
+  if (YES_ANSWERS.test(trimmed) || NO_ANSWERS.test(trimmed)) return true;
+  const words = trimmed.split(/\s+/);
+  if (words.length > 4) return false;
+  // Check if it's a known crop name
+  const lower = trimmed.toLowerCase();
+  if (CROP_NAMES.some(c => lower.includes(c))) return true;
+  // Check if it's a known crop stage
+  if (CROP_STAGES.some(s => lower.includes(s))) return true;
+  // Check if it's a known irrigation/soil type
+  if (IRRIGATION_TYPES.some(t => lower.includes(t))) return true;
+  if (SOIL_TYPES.some(t => lower.includes(t))) return true;
+  // Check if it looks like a location (capitalized or short Indian name)
+  if (words.length <= 3 && /^[A-Z]/.test(trimmed)) return true;
+  // Common short answers
+  if (/^(today|tomorrow|this week|next week|daily|weekly|7.day|month)$/i.test(lower)) return true;
+  return false;
+}
+
+function extractAgriContext(messages: Array<{ role: string; content: string; metadata?: { location?: string; weatherData?: import("./weather").WeatherData } }>): AgriContext {
+  const ctx: AgriContext = {
+    location: null,
+    state: null,
+    crop: null,
+    cropStage: null,
+    soilType: null,
+    irrigationType: null,
+    lastAssistantAskedFor: null,
+    weatherData: null,
+  };
+
+  // Scan messages from oldest to newest to build up context
+  for (const msg of messages) {
+    const content = msg.content.toLowerCase();
+    const fullContent = msg.content;
+
+    // Extract location from metadata or content
+    if (msg.metadata?.location) {
+      ctx.location = msg.metadata.location;
+    }
+
+    // Extract weather data from metadata
+    if (msg.metadata?.weatherData) {
+      ctx.weatherData = msg.metadata.weatherData;
+    }
+
+    if (msg.role === "user") {
+      // Extract crop from user message
+      for (const crop of CROP_NAMES) {
+        if (content.includes(crop)) {
+          ctx.crop = crop.charAt(0).toUpperCase() + crop.slice(1);
+          break;
+        }
+      }
+
+      // Extract crop stage
+      for (const stage of CROP_STAGES) {
+        if (content.includes(stage)) {
+          ctx.cropStage = stage.charAt(0).toUpperCase() + stage.slice(1);
+          break;
+        }
+      }
+
+      // Extract soil type
+      for (const soil of SOIL_TYPES) {
+        if (content.includes(soil)) {
+          ctx.soilType = soil.charAt(0).toUpperCase() + soil.slice(1);
+          break;
+        }
+      }
+
+      // Extract irrigation type
+      for (const irr of IRRIGATION_TYPES) {
+        if (content.includes(irr)) {
+          ctx.irrigationType = irr.charAt(0).toUpperCase() + irr.slice(1);
+          break;
+        }
+      }
+
+      // Try to extract state from user message
+      for (const state of INDIAN_STATES) {
+        if (content.includes(state)) {
+          ctx.state = state.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          break;
+        }
+      }
+
+      // Extract location from preposition patterns
+      if (!ctx.location) {
+        const locMatch = /(?:in|at|from|near|of|for)\s+([A-Za-z\s,.'-]+)/i.exec(fullContent);
+        if (locMatch) {
+          const candidate = locMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
+          if (candidate.length >= 2) {
+            ctx.location = candidate;
+          }
+        }
+      }
+    }
+
+    if (msg.role === "assistant") {
+      // Check what the assistant last asked for
+      if (/district.*state|state.*district|location|where.*located|which.*city|which.*district/i.test(content)) {
+        ctx.lastAssistantAskedFor = "location";
+      } else if (/which crop|what crop|crop.*grow|which crop/i.test(content)) {
+        ctx.lastAssistantAskedFor = "crop";
+      } else if (/growth stage|crop stage|what.*stage|current.*stage/i.test(content)) {
+        ctx.lastAssistantAskedFor = "cropStage";
+      } else if (/soil type|what.*soil/i.test(content)) {
+        ctx.lastAssistantAskedFor = "soilType";
+      } else if (/irrigation type|how.*irrigat/i.test(content)) {
+        ctx.lastAssistantAskedFor = "irrigationType";
+      } else if (/should.*irrigat|can.*spray|should.*harvest|advisory|advice/i.test(content)) {
+        ctx.lastAssistantAskedFor = null;
+      }
+    }
+  }
+
+  return ctx;
+}
+
 function parseQuery(userMessage: string): ParsedQuery {
   const msg = userMessage.toLowerCase().trim();
   let location: string | null = null;
@@ -1038,6 +1212,160 @@ export const processMessage = action({
 
     // Parse the query
     const parsed = parseQuery(content);
+
+    // ── Context-Aware Agriculture Routing ──
+    // Read conversation history for agriculture context
+    const isAgriFollowUp = isFollowUpAnswer(content) || 
+      /agri|crop|farm|irrigat|sow|harvest|pest|fertiliz|spray|advisory/i.test(content);
+    
+    if (isAgriFollowUp) {
+      try {
+        // Get conversation history (last 20 messages)
+        const messages = await ctx.runQuery(api.chat.getMessages, { conversationId: args.conversationId });
+        const recentMessages = messages.slice(-20);
+        const agriCtx = extractAgriContext(recentMessages);
+        
+        // Determine what the follow-up is answering
+        let resolvedLocation = parsed.location || agriCtx.location;
+        let resolvedCrop = agriCtx.crop;
+        let resolvedStage = agriCtx.cropStage;
+        let resolvedMessage = content;
+        
+        const msgLower = content.toLowerCase().trim();
+        
+        // If assistant last asked for location and user sends a short answer
+        if (agriCtx.lastAssistantAskedFor === "location" && isFollowUpAnswer(content) && !parsed.location) {
+          // User is answering with a location
+          resolvedLocation = content.trim();
+          parsed.location = resolvedLocation;
+        }
+        
+        // If assistant last asked for crop
+        if (agriCtx.lastAssistantAskedFor === "crop" && isFollowUpAnswer(content)) {
+          const cropMatch = CROP_NAMES.find(c => msgLower.includes(c));
+          if (cropMatch) {
+            resolvedCrop = cropMatch.charAt(0).toUpperCase() + cropMatch.slice(1);
+          } else {
+            resolvedCrop = content.trim().charAt(0).toUpperCase() + content.trim().slice(1);
+          }
+        }
+        
+        // If assistant last asked for stage
+        if (agriCtx.lastAssistantAskedFor === "cropStage" && isFollowUpAnswer(content)) {
+          const stageMatch = CROP_STAGES.find(s => msgLower.includes(s));
+          if (stageMatch) {
+            resolvedStage = stageMatch.charAt(0).toUpperCase() + stageMatch.slice(1);
+          } else {
+            resolvedStage = content.trim().charAt(0).toUpperCase() + content.trim().slice(1);
+          }
+        }
+        
+        // Handle "yes do it" / agreement responses
+        if (YES_ANSWERS.test(msgLower) && agriCtx.lastAssistantAskedFor) {
+          // User agreed to provide info but didn't — ask again naturally
+          if (agriCtx.lastAssistantAskedFor === "location" && !agriCtx.location) {
+            const text = "Sure! Please tell me your **district and state** (for example, Pune, Maharashtra), and I'll prepare the advisory for you. 🌾";
+            await ctx.runMutation(api.chat.saveAssistantMessage, {
+              conversationId: args.conversationId,
+              content: text,
+            });
+            return { text, metadata: null };
+          }
+        }
+        
+        // Build the enriched message with context for the weather/LLM system
+        if (resolvedLocation && !parsed.location) {
+          parsed.location = resolvedLocation;
+        }
+        
+        // If we have a location and this is an agriculture question, fetch weather and generate agri response
+        if (resolvedLocation) {
+          try {
+            const results: Array<{name: string; latitude: number; longitude: number; country: string; timezone: string}> = await ctx.runAction(api.weather.geocodeLocation, { query: resolvedLocation });
+            if (results && results.length > 0) {
+              const best = results[0];
+              const weatherData: import("./weather").WeatherData = await ctx.runAction(api.weather.fetchWeather, {
+                latitude: best.latitude,
+                longitude: best.longitude,
+                locationName: best.name,
+                country: best.country,
+                timezone: best.timezone || "auto",
+              });
+              
+              // Build context-rich message for LLM
+              const contextParts = [];
+              contextParts.push(`CONVERSATION CONTEXT:`);
+              contextParts.push(`Location: ${best.name}, ${best.country}`);
+              if (resolvedCrop) contextParts.push(`Crop: ${resolvedCrop}`);
+              if (resolvedStage) contextParts.push(`Growth Stage: ${resolvedStage}`);
+              if (agriCtx.soilType) contextParts.push(`Soil Type: ${agriCtx.soilType}`);
+              if (agriCtx.irrigationType) contextParts.push(`Irrigation: ${agriCtx.irrigationType}`);
+              contextParts.push(``);
+              contextParts.push(`CURRENT WEATHER in ${best.name}:`);
+              contextParts.push(`Temperature: ${weatherData.current.temperature}°C (feels like ${weatherData.current.apparentTemperature}°C)`);
+              contextParts.push(`Humidity: ${weatherData.current.humidity}%`);
+              contextParts.push(`Wind: ${weatherData.current.windSpeed} km/h`);
+              contextParts.push(`Condition: ${getWeatherDescription(weatherData.current.weatherCode)}`);
+              contextParts.push(`UV Index: ${weatherData.current.uvIndex}`);
+              contextParts.push(``);
+              contextParts.push(`7-DAY FORECAST:`);
+              weatherData.daily.forEach((day: {date: string; temperatureMax: number; temperatureMin: number; weatherCode: number; precipitationProbabilityMax: number; precipitationSum: number; windSpeedMax: number; uvIndexMax: number; sunrise: string; sunset: string}, i: number) => {
+                const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : day.date;
+                contextParts.push(`${label}: ${day.temperatureMin}°C - ${day.temperatureMax}°C, Rain: ${day.precipitationProbabilityMax}%, ${getWeatherDescription(day.weatherCode)}`);
+              });
+              contextParts.push(``);
+              contextParts.push(`USER MESSAGE: "${content}"`);
+              contextParts.push(``);
+              contextParts.push(`You are WeatherGPT's Agriculture Advisory. Using the REAL weather data above and the conversation context, provide a specific, actionable agriculture advisory. If the user asked a specific question (like "should I irrigate?"), answer it directly using the weather data. Be concise but thorough. Use markdown formatting.`);
+              
+              const enrichedMessage = contextParts.join("\n");
+              const text = await callLLM(enrichedMessage, lang, args.apiKey);
+              
+              if (text && !text.startsWith("[DEBUG]") && !text.startsWith("**Error:**")) {
+                await ctx.runMutation(api.chat.saveAssistantMessage, {
+                  conversationId: args.conversationId,
+                  content: text,
+                  metadata: {
+                    location: best.name,
+                    country: best.country,
+                    latitude: best.latitude,
+                    longitude: best.longitude,
+                    weatherData: weatherData as any,
+                  },
+                });
+                return { text, metadata: { location: best.name, country: best.country, latitude: best.latitude, longitude: best.longitude, weatherData: weatherData as any } };
+              }
+            }
+          } catch (err) {
+            console.error("Agri context weather fetch failed:", err);
+          }
+        }
+        
+        // If we have context but no location yet, ask naturally
+        if (!resolvedLocation && agriCtx.lastAssistantAskedFor === "location") {
+          const text = `I understand you're interested in an agriculture advisory. To give you location-specific advice, please tell me your **district and state** (for example, Pune, Maharashtra). 🌾`;
+          await ctx.runMutation(api.chat.saveAssistantMessage, {
+            conversationId: args.conversationId,
+            content: text,
+          });
+          return { text, metadata: null };
+        }
+        
+        // If we have location but need crop info
+        if (resolvedLocation && !resolvedCrop && agriCtx.lastAssistantAskedFor !== "location") {
+          const text = `Got it — you're in **${resolvedLocation}**. To give you crop-specific advice, which **crop** are you growing? (For example: rice, wheat, soybean, cotton, tomato, etc.)`;
+          await ctx.runMutation(api.chat.saveAssistantMessage, {
+            conversationId: args.conversationId,
+            content: text,
+          });
+          return { text, metadata: null };
+        }
+        
+      } catch (err) {
+        console.error("Agri context routing error:", err);
+        // Fall through to normal routing
+      }
+    }
 
     // ── Route 0: Severe Weather / Critical Areas (IMD + Open-Meteo real-time) ──
     if (/critical|severe|danger|alert|warning|where.*bad|which.*area|which.*region|worst weather|extreme|disaster|hazard|dangerous/i.test(content) && /weather|climate|condition|temp|rain|wind|storm|heat|cold|flood|cyclone|place|area|region|warning|alerts/i.test(content)) {
