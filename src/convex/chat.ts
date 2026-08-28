@@ -517,7 +517,7 @@ function generateHelpResponse(): string {
 async function callLLM(userMessage: string, language: string = "en", apiKeyOverride?: string): Promise<string> {
   const apiKey = apiKeyOverride || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return getFallbackResponse(userMessage);
+    return `[DEBUG] No API key found. override=${!!apiKeyOverride}, env=${!!process.env.GEMINI_API_KEY}`;
   }
 
   // Map language codes to language names for the AI
