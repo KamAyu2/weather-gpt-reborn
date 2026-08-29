@@ -1159,7 +1159,13 @@ export const processMessage = action({
       }
     }
 
-    // Fallback: deterministic response for general questions
+    // Fallback: try LLM for general questions, fall back to static if LLM fails
+    const llmResponse = await callLLM(content, lang, args.apiKey);
+    if (llmResponse && !llmResponse.startsWith("[DEBUG]") && !llmResponse.startsWith("**Error:**") && llmResponse.length > 10) {
+      await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: llmResponse });
+      return { text: llmResponse, metadata: null };
+    }
+    // Static fallback if LLM unavailable
     const fallbackText = "I am here to help with weather, forecasts, alerts, and agriculture advice. What would you like to know?\n\n**Try asking:**\n- \"Weather in Mumbai\"\n- \"7-day forecast for Delhi\"\n- \"Any cyclone alerts for Chennai?\"\n- \"Where are the critical weather conditions?\"\n- \"Should I irrigate crops today?\"";
     await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: fallbackText });
     return { text: fallbackText, metadata: null };
