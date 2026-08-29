@@ -155,7 +155,14 @@ function extractAgriContext(messages: Array<{ role: string; content: string; met
   for (const msg of messages) {
     const c = msg.content.toLowerCase();
     const fc = msg.content;
-    if (msg.metadata?.location && !ctx.location) ctx.location = msg.metadata.location;
+    // Only use metadata location as a fallback — never overwrite a user-provided location
+    if (msg.metadata?.location && !ctx.location) {
+      // Only accept metadata location if it looks like a real place (not a country/region name)
+      const metaLoc = msg.metadata.location;
+      if (metaLoc && metaLoc.length >= 2 && !/^(india|pakistan|bangladesh|sri lank|nepal|bhutan|china|japan)$/i.test(metaLoc)) {
+        ctx.location = metaLoc;
+      }
+    }
     if (msg.metadata?.weatherData) ctx.weatherData = msg.metadata.weatherData;
     if (msg.role === "user") {
       for (const crop of CROP_NAMES) { if (c.includes(crop)) { ctx.crop = crop.charAt(0).toUpperCase() + crop.slice(1); break; } }
@@ -272,7 +279,12 @@ function parseQuery(userMessage: string): ParsedQuery {
   // Strategy 2: Prepositions
   if (!location && !isKnowledgeQuestion) {
     const preMatch = /(?:in|at|near|around|from|to|of|for|visit|going to|travel to|staying in|weather of|weather in|weather for)\s+([A-Za-z\s,.'-]+)/i.exec(userMessage);
-    if (preMatch) { const cand = preMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 4).join(" "); if (cand.length >= 2) location = cand; }
+    if (preMatch) {
+      let cand = preMatch[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 4).join(" ");
+      // Strip leading articles: "the goa" → "goa", "a mumbai" → "mumbai"
+      cand = cand.replace(/^(the|a|an)\s+/i, "").trim();
+      if (cand.length >= 2) location = cand;
+    }
   }
 
   // Strategy 3: Last proper noun
@@ -549,7 +561,9 @@ export const processMessage = action({
     // Agriculture intent detection
     const hasAgricultureContext = !!(agriCtx.crop || agriCtx.location);
     const isAgricultureKeyword = /agri|crop|farm|irrigat|sow|sowing|harvest|pest|fertiliz|spray|advisory|disease|fungal|waterlog|grow|growing|cultivat|my crop|my farm|field|plant/i.test(content);
-    const isAgricultureQuestion = /should\s+i|can\s+i|will\s+this|will\s+the|is\s+my|what\s+should|how\s+my|affect|impact|risk|damage|protect|irrigat|spray|harvest|fertiliz|my\s+crop|my\s+soybean|my\s+wheat|my\s+rice|my\s+cotton|what\s+do\s+for/i.test(content);
+    // Agriculture question: must contain explicit agriculture vocabulary
+    // "risk", "affect", "my" alone are NOT enough — they could be general questions
+    const isAgricultureQuestion = /irrigat|spray|harvest|fertiliz|sow|sowing|my\s+crop|my\s+soybean|my\s+wheat|my\s+rice|my\s+cotton|crop.*risk|crop.*affect|crop.*damage|farm.*risk|farm.*affect|pest.*risk|disease.*risk|should\s+\w+\s+crop|can\s+\w+\s+crop|what\s+should\s+\w+\s+crop/i.test(content);
     const isAgricultureIntent = (isAgricultureKeyword || (hasAgricultureContext && isAgricultureQuestion)) && !isFlightIntent;
 
     // ── Analytical/Global Data Intent Detection ──
@@ -561,6 +575,12 @@ export const processMessage = action({
     // If pattern matches, it is analytical EVEN if a location like 'india' was extracted
     // The location is the SCOPE of analysis, not a filter
     const isAnalyticalIntent = isAnalyticalByPattern;
+
+    // Debug logging (server-side only, never exposed to UI)
+    console.log("[WeatherGPT] MESSAGE:", content);
+    console.log("[WeatherGPT] PARSED:", JSON.stringify(parsed));
+    console.log("[WeatherGPT] AGRI_CTX:", JSON.stringify({crop: agriCtx.crop, stage: agriCtx.cropStage, location: agriCtx.location, askedFor: agriCtx.lastAssistantAskedFor}));
+    console.log("[WeatherGPT] INTENTS:", JSON.stringify({flight: isFlightIntent, agri: isAgricultureIntent, analytical: isAnalyticalIntent, agriKeyword: isAgricultureKeyword, agriQuestion: isAgricultureQuestion, hasAgriCtx: hasAgricultureContext}));
 
     // Global Data Analysis Handler
     if (isAnalyticalIntent) {
