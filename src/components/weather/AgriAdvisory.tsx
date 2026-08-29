@@ -105,7 +105,7 @@ export function AgriAdvisory({ weatherData }: AgriAdvisoryProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 overflow-hidden">
+    <div className="rounded-2xl border border-green-200/60 dark:border-green-800/40 bg-green-50/80 dark:bg-green-950/30 overflow-hidden">
       <div className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
@@ -113,7 +113,7 @@ export function AgriAdvisory({ weatherData }: AgriAdvisoryProps) {
           </div>
           <div>
             <h3 className="text-sm font-semibold">Agriculture Advisory</h3>
-            <p className="text-[10px] text-muted-foreground">Crop-specific weather advice</p>
+            <p className="text-[10px] text-foreground/60 font-medium">Crop-specific weather advice</p>
           </div>
         </div>
 
@@ -136,7 +136,7 @@ export function AgriAdvisory({ weatherData }: AgriAdvisoryProps) {
                     <CheckCircle className="h-3 w-3 text-green-500" />
                   )}
                 </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mt-1 text-[11px] leading-relaxed text-foreground/70">
                   {advisory.message}
                 </p>
               </div>

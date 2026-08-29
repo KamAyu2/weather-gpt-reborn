@@ -55,7 +55,7 @@ function StatItem({ icon: Icon, label, value, sub }: { icon: React.ElementType; 
         <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
       </div>
       <span className="text-sm font-semibold tracking-tight text-foreground">{value}</span>
-      {sub &&        <span className="text-xs text-foreground/60 font-medium">{sub}</span>}
+      {sub && <span className="text-xs text-foreground/60 font-medium">{sub}</span>}
     </div>
   );
 }
@@ -210,10 +210,10 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
         <div className="grid grid-cols-7 gap-1">
           {daily.slice(0, 7).map((day, i) => (
             <div key={i} className="flex flex-col items-center gap-1.5 rounded-lg px-1 py-2 transition-colors hover:bg-muted/30">
-              <span className="text-[10px] font-medium text-muted-foreground">{formatDay(i, translate)}</span>
+              <span className="text-[10px] font-semibold text-foreground/70">{formatDay(i, translate)}</span>
               <WeatherIcon code={day.weatherCode} size={18} />
-              <span className="text-xs font-medium">{Math.round(day.temperatureMax)}°</span>
-              <span className="text-[10px] text-foreground/50 font-medium">{Math.round(day.temperatureMin)}°</span>
+              <span className="text-xs font-bold text-foreground">{Math.round(day.temperatureMax)}°</span>
+              <span className="text-[10px] font-medium text-foreground/60">{Math.round(day.temperatureMin)}°</span>
               {day.precipitationProbabilityMax > 20 && (
                 <span className="text-[9px] text-blue-500">{day.precipitationProbabilityMax}% {translate('weather.rainChanceLabel')}</span>
               )}
