@@ -567,7 +567,7 @@ export default function Dashboard() {
                       <h2 className="text-lg font-medium tracking-tight text-foreground">
                         {translate("chat.welcome")}
                       </h2>
-                      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                      <p className="mt-2 mx-auto max-w-sm text-sm text-muted-foreground">
                         {translate("chat.welcomeSubtitle")}
                       </p>
                       <div className="mt-8">

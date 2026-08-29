@@ -32,7 +32,7 @@ export function SuggestionChips({ onSelect }: SuggestionChipsProps) {
           <button
             key={suggestion.key}
             onClick={() => onSelect(text)}
-            className="inline-flex items-center gap-2 rounded-full border border-border/50 bg-white/80 backdrop-blur-sm px-4 py-2 text-sm text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary shadow-sm card-hover"
+            className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-4 py-2 text-sm text-foreground/70 font-medium transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary shadow-sm card-hover"
           >
             <suggestion.icon className={`h-3.5 w-3.5 ${suggestion.color}`} />
             {text}
