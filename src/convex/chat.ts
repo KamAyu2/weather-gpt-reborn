@@ -93,24 +93,37 @@ const INDIAN_CITY_NAMES = new Set([
   "agra","nashik","faridabad","meerut","rajkot","varanasi",
 ]);
 
+function isIndiaResult(r: {country?: string; country_code?: string; latitude?: number; longitude?: number}): boolean {
+  if (r.country_code?.toUpperCase() === "IN") return true;
+  if (r.country?.toLowerCase() === "india") return true;
+  // Latitude/longitude bounds for India (approx 6°N to 37°N, 68°E to 98°E)
+  if (r.latitude && r.longitude && r.latitude >= 6 && r.latitude <= 37 && r.longitude >= 68 && r.longitude <= 98) return true;
+  return false;
+}
+
 function preferIndianResult(results: Array<{name: string; country: string; country_code?: string; admin1?: string; latitude: number; longitude: number; timezone: string}>, query: string): {name: string; country: string; country_code?: string; admin1?: string; latitude: number; longitude: number; timezone: string} | null {
   if (!results || results.length === 0) return null;
   const q = query.toLowerCase().trim();
-  // If querying an Indian city name, prefer results with country_code IN
+  // If querying an Indian city name, strongly prefer India results
   if (INDIAN_CITY_NAMES.has(q)) {
-    const indian = results.find(r => r.country_code?.toUpperCase() === "IN" || r.country?.toLowerCase() === "india");
+    const indian = results.find(r => isIndiaResult(r));
     if (indian) return indian;
   }
   // If querying an Indian state name, prefer India
   if (INDIAN_STATES.some(s => q.includes(s))) {
-    const indian = results.find(r => r.country_code?.toUpperCase() === "IN" || r.country?.toLowerCase() === "india");
+    const indian = results.find(r => isIndiaResult(r));
     if (indian) return indian;
   }
   // For general queries, prefer India if any result is in India and the query is short
   if (q.split(/\s+/).length <= 2) {
-    const indian = results.find(r => r.country_code?.toUpperCase() === "IN" || r.country?.toLowerCase() === "india");
+    const indian = results.find(r => isIndiaResult(r));
     if (indian) return indian;
   }
+  // Last resort: if first result looks like India, keep it
+  if (isIndiaResult(results[0])) return results[0];
+  // Check if any result is India
+  const indian = results.find(r => isIndiaResult(r));
+  if (indian) return indian;
   return results[0];
 }
 
@@ -124,9 +137,11 @@ function isFollowUpAnswer(msg: string): boolean {
   if (t.length > 50) return false;
   if (YES_ANSWERS.test(t) || NO_ANSWERS.test(t)) return true;
   const words = t.split(/\s+/);
-  if (words.length > 4) return false;
   const l = t.toLowerCase();
-  if (CROP_NAMES.some(c => l.includes(c))) return true;
+  // Messages with question words are NOT follow-up answers (they are new questions)
+  if (/^(how|what|where|why|which|when|who|can|could|would|should|do|does|is|are|will|tell|explain)\b/i.test(l)) return false;
+  if (words.length > 4) return false;
+  if (CROP_NAMES.some(c => l.includes(c)) && words.length <= 3) return true;
   if (CROP_STAGES.some(s => l.includes(s))) return true;
   if (IRRIGATION_TYPES.some(t2 => l.includes(t2))) return true;
   if (SOIL_TYPES.some(t2 => l.includes(t2))) return true;
@@ -528,11 +543,14 @@ export const processMessage = action({
       agriCtx = extractAgriContext(agriMessages);
     } catch (err) { console.error("Context extraction failed:", err); }
 
+    // Flight/Aviation intent detection (must be before agriculture)
+    const isFlightIntent = /\b(flight|fly|flying|airplane|aircraft|aviation|pilot|takeoff|landing|airport|airways|aerial|board|boarding)\b/i.test(content);
+
     // Agriculture intent detection
     const hasAgricultureContext = !!(agriCtx.crop || agriCtx.location);
     const isAgricultureKeyword = /agri|crop|farm|irrigat|sow|sowing|harvest|pest|fertiliz|spray|advisory|disease|fungal|waterlog|grow|growing|cultivat|my crop|my farm|field|plant/i.test(content);
     const isAgricultureQuestion = /should\s+i|can\s+i|will\s+this|will\s+the|is\s+my|what\s+should|how\s+my|affect|impact|risk|damage|protect|irrigat|spray|harvest|fertiliz|my\s+crop|my\s+soybean|my\s+wheat|my\s+rice|my\s+cotton|what\s+do\s+for/i.test(content);
-    const isAgricultureIntent = isAgricultureKeyword || (hasAgricultureContext && isAgricultureQuestion);
+    const isAgricultureIntent = (isAgricultureKeyword || (hasAgricultureContext && isAgricultureQuestion)) && !isFlightIntent;
 
     // ── Analytical/Global Data Intent Detection ──
     // These questions ask about OVERALL weather across multiple locations,
@@ -660,6 +678,115 @@ export const processMessage = action({
       } catch (err) {
         console.error("Global analysis error:", err);
         const text = "I had trouble analyzing the weather data across locations. Please try again.";
+        await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+        return { text, metadata: null };
+      }
+    }
+
+    // ── Flight/Aviation Weather Handler ──
+    if (isFlightIntent && !isAgricultureKeyword) {
+      try {
+        // Extract origin and destination if mentioned
+        const flightLocMatch = /(?:from|origin|departing|leaving)\s+([A-Za-z\s,.'-]+?)\s+(?:to|dest|destination|arriving|landing)\s+([A-Za-z\s,.'-]+)/i.exec(content);
+        let originLoc = parsed.location;
+        let destLoc: string | null = null;
+        if (flightLocMatch) {
+          originLoc = flightLocMatch[1].replace(/[?.!,;:]+$/, "").trim();
+          destLoc = flightLocMatch[2].replace(/[?.!,;:]+$/, "").trim();
+        } else {
+          // Use context for origin, ask for destination
+          const genCtx = extractGeneralContext(agriMessages);
+          if (genCtx.lastLocation) originLoc = genCtx.lastLocation;
+        }
+
+        if (!originLoc || !destLoc) {
+          // Ask for missing info
+          const missing = !originLoc && !destLoc ? "both origin and destination"
+            : !destLoc ? "destination"
+            : "origin";
+          const text = "I can help with flight weather advisories! Please tell me the \"" + missing + "\" cities (e.g., \"Flight from Mumbai to Delhi\").";
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+          return { text, metadata: null };
+        }
+
+        // Fetch weather for both locations
+        const geoType: Array<{name: string; latitude: number; longitude: number; country: string; country_code?: string; admin1?: string; timezone: string}> = [];
+        const [originResults, destResults]: [typeof geoType, typeof geoType] = await Promise.all([
+          ctx.runAction(api.weather.geocodeLocation, { query: originLoc }) as Promise<typeof geoType>,
+          ctx.runAction(api.weather.geocodeLocation, { query: destLoc }) as Promise<typeof geoType>,
+        ]);
+
+        if (!originResults?.length || !destResults?.length) {
+          const text = "I couldn't find one of those locations. Please check the city names and try again.";
+          await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+          return { text, metadata: null };
+        }
+
+        const origin: {name: string; latitude: number; longitude: number; country: string; country_code?: string; admin1?: string; timezone: string} = preferIndianResult(originResults, originLoc) || originResults[0];
+        const dest: {name: string; latitude: number; longitude: number; country: string; country_code?: string; admin1?: string; timezone: string} = preferIndianResult(destResults, destLoc) || destResults[0];
+
+        const [originWeather, destWeather] = await Promise.all([
+          ctx.runAction(api.weather.fetchWeather, { latitude: origin.latitude, longitude: origin.longitude, locationName: origin.name, country: origin.country, timezone: origin.timezone || "auto" }),
+          ctx.runAction(api.weather.fetchWeather, { latitude: dest.latitude, longitude: dest.longitude, locationName: dest.name, country: dest.country, timezone: dest.timezone || "auto" }),
+        ]);
+
+        // Build flight advisory
+        let text = "**✈ Flight Weather Advisory: " + origin.name + " → " + dest.name + "**\n\n";
+
+        const owd = originWeather.current;
+        const dwd = destWeather.current;
+        const oCond = getWeatherDescription(owd.weatherCode);
+        const dCond = getWeatherDescription(dwd.weatherCode);
+
+        text += "**Departure: " + origin.name + "**\n";
+        text += "\u2022 " + owd.temperature + "\u00b0C, " + oCond + "\n";
+        text += "\u2022 Wind: " + owd.windSpeed + " km/h " + getWindDirection(owd.windDirection) + "\n";
+        text += "\u2022 Visibility: " + (owd.weatherCode <= 3 ? "Good" : owd.weatherCode <= 48 ? "Reduced (fog/mist)" : "Reduced (precipitation)") + "\n";
+        text += "\u2022 Humidity: " + owd.humidity + "%\n\n";
+
+        text += "**Arrival: " + dest.name + "**\n";
+        text += "\u2022 " + dwd.temperature + "\u00b0C, " + dCond + "\n";
+        text += "\u2022 Wind: " + dwd.windSpeed + " km/h " + getWindDirection(dwd.windDirection) + "\n";
+        text += "\u2022 Visibility: " + (dwd.weatherCode <= 3 ? "Good" : dwd.weatherCode <= 48 ? "Reduced (fog/mist)" : "Reduced (precipitation)") + "\n";
+        text += "\u2022 Humidity: " + dwd.humidity + "%\n\n";
+
+        // Flight conditions assessment
+        text += "**Flight Conditions Assessment:**\n";
+        const oRisk = owd.weatherCode >= 61 || owd.windSpeed > 40 || owd.weatherCode >= 95;
+        const dRisk = dwd.weatherCode >= 61 || dwd.windSpeed > 40 || dwd.weatherCode >= 95;
+
+        if (oRisk || dRisk) {
+          text += "\u26a0\ufe0f **Weather advisory:** ";
+          const issues: string[] = [];
+          if (oRisk) issues.push(origin.name + " has challenging conditions (" + oCond + ", " + owd.windSpeed + " km/h wind)");
+          if (dRisk) issues.push(dest.name + " has challenging conditions (" + dCond + ", " + dwd.windSpeed + " km/h wind)");
+          text += issues.join("; ") + "\n";
+          text += "**Recommendation:** Check with your airline for possible delays or turbulence. Allow extra travel time.\n";
+        } else {
+          text += "\u2705 **Favorable flying conditions** at both locations.\n";
+          text += "Wind speeds are manageable and visibility should be adequate.\n";
+        }
+
+        // 7-day forecast brief
+        text += "\n**3-Day Outlook:**\n";
+        for (let i = 0; i < Math.min(3, originWeather.daily.length); i++) {
+          const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : "Day after";
+          text += "\u2022 **" + label + "**: " + origin.name + " " + originWeather.daily[i].temperatureMin + "-" + originWeather.daily[i].temperatureMax + "\u00b0C, " + originWeather.daily[i].precipitationProbabilityMax + "% rain | " + dest.name + " " + destWeather.daily[i].temperatureMin + "-" + destWeather.daily[i].temperatureMax + "\u00b0C, " + destWeather.daily[i].precipitationProbabilityMax + "% rain\n";
+        }
+
+        text += "\n**Safety Tips:**\n";
+        text += "\u2022 Monitor real-time airport updates for delays\n";
+        text += "\u2022 Pack for the weather at your destination (" + (dwd.temperature < 15 ? "warm clothes" : dwd.temperature > 35 ? "light, breathable clothes" : "comfortable layers") + ")\n";
+        if (oRisk || dRisk) text += "\u2022 Consider travel insurance for weather-related disruptions\n";
+
+        const now = new Date();
+        text += "\n---\n**Source:** Open-Meteo Weather API | Updated: " + now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) + "\n*WeatherGPT aviation advisory. For official NOTAMs and aviation weather, check [AERA](https://aeraindia.gov.in) or your airline.*";
+
+        await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
+        return { text, metadata: null };
+      } catch (err) {
+        console.error("Flight weather error:", err);
+        const text = "I had trouble fetching flight weather data. Please try again.";
         await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: text });
         return { text, metadata: null };
       }
