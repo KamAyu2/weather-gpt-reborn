@@ -1,0 +1,119 @@
+======================================================================
+WeatherGPT SELF-TEST REPORT
+Generated: 2026-08-29 07:57:44
+======================================================================
+
+Total tests: 30
+Passed: 30
+Failed: 0
+Pass rate: 100.0%
+
+----------------------------------------------------------------------
+GROUND TRUTH DATA (Open-Meteo API)
+----------------------------------------------------------------------
+  Pune: 26.2°C (feels 28.3°C), humidity=74%, wind=23.8km/h, rain_prob=100%, precip=4.5mm
+  Mumbai: 28.5°C (feels 32.0°C), humidity=77%, wind=19.8km/h, rain_prob=100%, precip=4.6mm
+  Delhi: 35.3°C (feels 41.0°C), humidity=49%, wind=9.9km/h, rain_prob=2%, precip=0.0mm
+  Chennai: 36.3°C (feels 41.2°C), humidity=43%, wind=12.5km/h, rain_prob=86%, precip=2.7mm
+  Kolkata: 29.4°C (feels 36.7°C), humidity=85%, wind=3.7km/h, rain_prob=94%, precip=15.8mm
+  Goa: 26.2°C (feels 28.4°C), humidity=66%, wind=9.4km/h, rain_prob=13%, precip=0.0mm
+  Nashik: 27.2°C (feels 28.8°C), humidity=69%, wind=24.9km/h, rain_prob=86%, precip=0.6mm
+  Ludhiana: 36.9°C (feels 42.9°C), humidity=45%, wind=5.8km/h, rain_prob=25%, precip=0.5mm
+  Indore: 28.8°C (feels 31.9°C), humidity=64%, wind=17.1km/h, rain_prob=47%, precip=0.7mm
+
+----------------------------------------------------------------------
+CATEGORY BREAKDOWN
+----------------------------------------------------------------------
+  GREETING: 4/4 passed [ALL PASS]
+  CURRENT_WEATHER: 6/6 passed [ALL PASS]
+  FORECAST: 2/2 passed [ALL PASS]
+  LOCATION_SWITCH: 3/3 passed [ALL PASS]
+  LOCATION_DIRECT: 2/2 passed [ALL PASS]
+  GLOBAL_ANALYSIS: 6/6 passed [ALL PASS]
+  FLIGHT: 2/2 passed [ALL PASS]
+  AGRICULTURE: 2/2 passed [ALL PASS]
+  GENERAL: 3/3 passed [ALL PASS]
+
+NO FAILURES - All tests passed!
+
+----------------------------------------------------------------------
+ROUTING ANALYSIS
+----------------------------------------------------------------------
+
+  AGRICULTURE_COLLECT (2 messages):
+    - "I grow soybean"
+    - "should I irrigate?"
+
+  FALLBACK (5 messages):
+    - "what about Mumbai?"
+    - "how about Nashik"
+    - "how to make coffee"
+    - "what is the capital of france"
+    - "tell me a joke"
+
+  FLIGHT (2 messages):
+    - "flight from Mumbai to Delhi"
+    - "should I take a flight today?"
+
+  GLOBAL_ANALYSIS (6 messages):
+    - "where are the conditions critical?"
+    - "which areas are at risk?"
+    - "any critical conditions in india?"
+    - "give me an overall weather summary"
+    - "which locations need attention?"
+    ... and 1 more
+
+  GREETING (4 messages):
+    - "hi"
+    - "hello"
+    - "namaskar"
+    - "good morning"
+
+  LOCATION_WEATHER (11 messages):
+    - "weather of Pune"
+    - "what's the weather in Mumbai?"
+    - "temperature in Delhi"
+    - "weather of goa"
+    - "weather of the goa"
+    ... and 6 more
+
+----------------------------------------------------------------------
+REGRESSION SUITE (30 tests)
+----------------------------------------------------------------------
+  These tests verify existing functionality and must pass after any future changes.
+  Run: python3 scripts/self_test.py
+
+  [PASS] [G01] "hi" → GREETING
+  [PASS] [G02] "hello" → GREETING
+  [PASS] [G03] "namaskar" → GREETING
+  [PASS] [G04] "good morning" → GREETING
+  [PASS] [W01] "weather of Pune" → LOCATION_WEATHER
+  [PASS] [W02] "what's the weather in Mumbai?" → LOCATION_WEATHER
+  [PASS] [W03] "temperature in Delhi" → LOCATION_WEATHER
+  [PASS] [W04] "weather of goa" → LOCATION_WEATHER
+  [PASS] [W05] "weather of the goa" → LOCATION_WEATHER
+  [PASS] [W06] "weather in Chennai" → LOCATION_WEATHER
+  [PASS] [F01] "7-day forecast for Delhi" → LOCATION_WEATHER
+  [PASS] [F02] "forecast for Mumbai this week" → LOCATION_WEATHER
+  [PASS] [L01] "what about Mumbai?" → FALLBACK
+  [PASS] [L02] "and Delhi?" → LOCATION_WEATHER
+  [PASS] [L03] "how about Nashik" → FALLBACK
+  [PASS] [L04] "weather in Mumbai" → LOCATION_WEATHER
+  [PASS] [L05] "weather for Delhi" → LOCATION_WEATHER
+  [PASS] [A01] "where are the conditions critical?" → GLOBAL_ANALYSIS
+  [PASS] [A02] "which areas are at risk?" → GLOBAL_ANALYSIS
+  [PASS] [A03] "any critical conditions in india?" → GLOBAL_ANALYSIS
+  [PASS] [A04] "give me an overall weather summary" → GLOBAL_ANALYSIS
+  [PASS] [A05] "which locations need attention?" → GLOBAL_ANALYSIS
+  [PASS] [A06] "what are the major weather concerns?" → GLOBAL_ANALYSIS
+  [PASS] [FL01] "flight from Mumbai to Delhi" → FLIGHT
+  [PASS] [FL02] "should I take a flight today?" → FLIGHT
+  [PASS] [AG01] "I grow soybean" → AGRICULTURE_COLLECT
+  [PASS] [AG02] "should I irrigate?" → AGRICULTURE_COLLECT
+  [PASS] [N01] "how to make coffee" → FALLBACK
+  [PASS] [N02] "what is the capital of france" → FALLBACK
+  [PASS] [N03] "tell me a joke" → FALLBACK
+
+======================================================================
+END OF REPORT
+======================================================================
