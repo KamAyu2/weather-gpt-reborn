@@ -40,14 +40,14 @@ export function WeatherChart({ weatherData }: WeatherChartProps) {
   ];
 
   const barColors: Record<Metric, string> = {
-    temperature: "bg-gradient-to-t from-orange-400 to-orange-300",
-    humidity: "bg-gradient-to-t from-blue-400 to-blue-300",
-    wind: "bg-gradient-to-t from-cyan-400 to-cyan-300",
-    rain: "bg-gradient-to-t from-blue-500 to-blue-400",
+    temperature: "bg-gradient-to-t from-orange-500 to-orange-400",
+    humidity: "bg-gradient-to-t from-blue-600 to-blue-500",
+    wind: "bg-gradient-to-t from-cyan-600 to-cyan-500",
+    rain: "bg-gradient-to-t from-blue-700 to-blue-600",
   };
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 p-5 shadow-sm">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <BarChart3 className="h-4 w-4 text-primary" />
@@ -82,7 +82,7 @@ export function WeatherChart({ weatherData }: WeatherChartProps) {
           return (
             <div key={i} className="flex-1 flex flex-col items-center gap-1">
               {/* Value label */}
-              <span className="text-[10px] font-medium text-muted-foreground">
+              <span className="text-[10px] font-bold text-foreground/80">
                 {value}{metric === "temperature" ? "°" : metric === "humidity" ? "%" : ""}
               </span>
 
@@ -90,7 +90,7 @@ export function WeatherChart({ weatherData }: WeatherChartProps) {
               <div className="w-full flex flex-col items-center" style={{ height: "80px" }}>
                 {metric === "temperature" && (
                   <div
-                    className="w-full rounded-t-sm bg-muted/40"
+                    className="w-full rounded-t-sm bg-border/70"
                     style={{ height: `${lowPercent}%`, minHeight: lowPercent > 0 ? "4px" : "0" }}
                   />
                 )}
@@ -103,7 +103,7 @@ export function WeatherChart({ weatherData }: WeatherChartProps) {
               </div>
 
               {/* Day label */}
-              <span className="text-[10px] text-muted-foreground/60 font-medium">{d.day}</span>
+              <span className="text-[10px] text-foreground/70 font-semibold">{d.day}</span>
             </div>
           );
         })}
@@ -111,13 +111,13 @@ export function WeatherChart({ weatherData }: WeatherChartProps) {
 
       {/* Legend for temperature */}
       {metric === "temperature" && (
-        <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-muted-foreground/60">
+        <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-foreground/60 font-medium">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-gradient-to-t from-orange-400 to-orange-300" />
+            <span className="inline-block w-2 h-2 rounded-sm bg-gradient-to-t from-orange-500 to-orange-400" />
             High
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-2 h-2 rounded-sm bg-muted/40" />
+            <span className="inline-block w-2 h-2 rounded-sm bg-border/70" />
             Low
           </span>
         </div>

@@ -50,12 +50,12 @@ function formatTime(iso: string): string {
 function StatItem({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub?: string }) {
   return (
     <div className="flex flex-col gap-1 bg-muted/30 rounded-xl p-2.5">
-      <div className="flex items-center gap-1.5 text-foreground/50">
+      <div className="flex items-center gap-1.5 text-foreground/60">
         <Icon className="h-3 w-3" />
         <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
       </div>
       <span className="text-sm font-semibold tracking-tight text-foreground">{value}</span>
-      {sub &&        <span className="text-xs text-foreground/50 font-medium">{sub}</span>}
+      {sub &&        <span className="text-xs text-foreground/60 font-medium">{sub}</span>}
     </div>
   );
 }
@@ -87,10 +87,10 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
   const { translate } = useLanguage();
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 p-5 shadow-md">
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-md">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-muted-foreground font-medium">{location.name}, {location.country}</p>
+          <p className="text-sm text-foreground/70 font-medium">{location.name}, {location.country}</p>
           <div className="mt-1 flex items-baseline gap-1">
             <span className="text-3xl font-semibold tracking-tight text-foreground drop-shadow-sm">{Math.round(current.temperature)}</span>
             <span className="text-lg font-medium text-foreground/70">°C</span>
@@ -112,11 +112,11 @@ export function WeatherCardCompact({ weatherData }: { weatherData: WeatherData }
         <div className="mt-4 flex items-center justify-between rounded-xl bg-muted/30 px-3 py-2">
           <div className="flex items-center gap-3 text-[11px]">
             <span className="text-foreground/70 font-medium">{translate('weather.highLabel')} {Math.round(today.temperatureMax)}°</span>
-            <span className="text-foreground/30">·</span>
+            <span className="text-foreground/40">·</span>
             <span className="text-foreground/70 font-medium">{translate('weather.lowLabel')} {Math.round(today.temperatureMin)}°</span>
           </div>
           {today.sunrise && (
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+            <div className="flex items-center gap-1.5 text-[10px] text-foreground/50 font-medium">
               <Sunrise className="h-3 w-3" />
               {formatTime(today.sunrise)}
             </div>
@@ -145,12 +145,12 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
   if (current.weatherCode >= 95) alerts.push({ type: "storm", message: translate('weather.stormAlert') });
 
   return (
-    <div className="rounded-2xl border border-border/50 bg-gradient-to-br from-white to-primary/5 overflow-hidden shadow-md">
+    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden shadow-md">
       {/* ─── Header ──────────────────────────────────────────────────────── */}
       <div className="p-6 pb-4">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-foreground/60 font-medium">
               {location.name}{location.country ? `, ${location.country}` : ""}
             </p>
             <div className="mt-2 flex items-baseline gap-1">
@@ -159,7 +159,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
               </span>
               <span className="text-xl font-medium text-foreground/70">°C</span>
             </div>
-            <p className="mt-1 text-sm text-foreground/70 font-medium">
+            <p className="mt-1 text-sm text-foreground/80 font-medium">
               {translate('weather.feelsLike')} {Math.round(current.apparentTemperature)}° · {getWeatherDescription(current.weatherCode, translate)}
             </p>
           </div>
@@ -179,7 +179,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
         {/* ─── Today Row ──────────────────────────────────────────────────── */}
         {today && (
           <div className="mt-5 flex flex-wrap items-center gap-4 rounded-xl bg-muted/30 px-4 py-3 text-xs">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
+            <div className="flex items-center gap-1.5 text-foreground/70 font-medium">
               <Thermometer className="h-3.5 w-3.5" />
               <span>{Math.round(today.temperatureMin)}° / {Math.round(today.temperatureMax)}°</span>
             </div>
@@ -187,13 +187,13 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
               <span className="text-blue-500">{today.precipitationProbabilityMax}% rain</span>
             )}
             {today.sunrise && (
-              <div className="flex items-center gap-1 text-muted-foreground/60">
+              <div className="flex items-center gap-1 text-foreground/50 font-medium">
                 <Sunrise className="h-3 w-3" />
                 {formatTime(today.sunrise)}
               </div>
             )}
             {today.sunset && (
-              <div className="flex items-center gap-1 text-muted-foreground/60">
+              <div className="flex items-center gap-1 text-foreground/50 font-medium">
                 <Sunset className="h-3 w-3" />
                 {formatTime(today.sunset)}
               </div>
@@ -204,7 +204,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
 
       {/* ─── 7-Day Forecast ─────────────────────────────────────────────── */}
       <div className="border-t border-border/50 px-6 py-4">
-        <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/60">
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-foreground/60">
           7-Day Forecast
         </p>
         <div className="grid grid-cols-7 gap-1">
@@ -213,7 +213,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
               <span className="text-[10px] font-medium text-muted-foreground">{formatDay(i, translate)}</span>
               <WeatherIcon code={day.weatherCode} size={18} />
               <span className="text-xs font-medium">{Math.round(day.temperatureMax)}°</span>
-              <span className="text-[10px] text-muted-foreground/50">{Math.round(day.temperatureMin)}°</span>
+              <span className="text-[10px] text-foreground/50 font-medium">{Math.round(day.temperatureMin)}°</span>
               {day.precipitationProbabilityMax > 20 && (
                 <span className="text-[9px] text-blue-500">{day.precipitationProbabilityMax}% {translate('weather.rainChanceLabel')}</span>
               )}
@@ -233,7 +233,7 @@ export function WeatherCard({ weatherData }: WeatherCardProps) {
 
       {/* ─── Footer ──────────────────────────────────────────────────────── */}
       <div className="border-t border-border/50 bg-muted/10 px-6 py-2.5">
-        <p className="text-center text-[10px] text-muted-foreground/40">
+        <p className="text-center text-[10px] text-foreground/40 font-medium">
           Data from Open-Meteo · Not for aviation or safety-critical use
         </p>
       </div>
