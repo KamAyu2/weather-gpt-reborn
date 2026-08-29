@@ -173,7 +173,12 @@ function extractAgriContext(messages: Array<{ role: string; content: string; met
       for (const state of INDIAN_STATES) { if (c.includes(state)) { ctx.state = state.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "); break; } }
       if (!ctx.location) {
         const m = /(?:in|at|from|near|of|for)\s+([A-Za-z\s,.'-]+)/i.exec(fc);
-        if (m) { const cand = m[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" "); if (cand.length >= 2) ctx.location = cand; }
+        if (m) {
+          let cand = m[1].replace(/[?.!,;:]+$/, "").trim().split(/\s+/).slice(0, 3).join(" ");
+          // Strip leading articles
+          cand = cand.replace(/^(the|a|an)\s+/i, "").trim();
+          if (cand.length >= 2) ctx.location = cand;
+        }
       }
     }
     if (msg.role === "assistant") {
@@ -657,7 +662,8 @@ export const processMessage = action({
         const llmText = await callLLM(llmPrompt, lang, args.apiKey);
         // If LLM succeeded and didn't error, use it
         let finalText = "";
-        if (llmText && !llmText.startsWith("**Error:**") && !llmText.startsWith("I'm having trouble") && !llmText.startsWith("GEMINI_API_KEY")) {
+        const isGlobalLlmComplete = llmText && !llmText.startsWith("**Error:**") && !llmText.startsWith("I'm having trouble") && !llmText.startsWith("GEMINI_API_KEY") && llmText.trim().length > 50 && !llmText.trim().endsWith("**");
+        if (isGlobalLlmComplete) {
           finalText = llmText;
         } else {
           // Deterministic fallback: format the data ourselves
@@ -856,7 +862,7 @@ export const processMessage = action({
             const cm = CROP_NAMES.find(c => msgLower.includes(c)); if (cm) resolvedCrop = cm.charAt(0).toUpperCase() + cm.slice(1);
             const sm = CROP_STAGES.find(s => msgLower.includes(s)); if (sm) resolvedStage = sm.charAt(0).toUpperCase() + sm.slice(1);
           } else {
-            resolvedLocation = content.trim();
+            resolvedLocation = content.trim().replace(/^(the|a|an)\s+/i, "").trim();
             parsed.location = resolvedLocation;
           }
         }
@@ -876,6 +882,8 @@ export const processMessage = action({
           return { text, metadata: null };
         }
 
+        // Strip articles from resolved location before geocoding
+        if (resolvedLocation) resolvedLocation = resolvedLocation.replace(/^(the|a|an)\s+/i, "").trim();
         if (resolvedLocation && !parsed.location) parsed.location = resolvedLocation;
 
         // Route A: Have all info + agriculture question -> generate response
@@ -921,7 +929,8 @@ export const processMessage = action({
               const enriched = cp.join("\n");
               const agriLlmText = await callLLM(enriched, lang, args.apiKey);
               let agriFinalText = "";
-              if (agriLlmText && !agriLlmText.startsWith("[DEBUG]") && !agriLlmText.startsWith("**Error:**") && !agriLlmText.startsWith("I'm having trouble") && !agriLlmText.startsWith("GEMINI_API_KEY")) {
+              const isLlmComplete = agriLlmText && !agriLlmText.startsWith("[DEBUG]") && !agriLlmText.startsWith("**Error:**") && !agriLlmText.startsWith("I'm having trouble") && !agriLlmText.startsWith("GEMINI_API_KEY") && agriLlmText.trim().length > 50 && !agriLlmText.trim().endsWith("**");
+              if (isLlmComplete) {
                 agriFinalText = agriLlmText;
               } else {
                 // Deterministic agriculture fallback
