@@ -159,9 +159,9 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
               <Sprout className="h-4 w-4 text-green-600" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Advanced Agriculture Advisory</h3>
+              <h3 className="text-sm font-semibold">{translate("agri.advancedTitle")}</h3>
               <p className="text-[10px] text-muted-foreground">
-                Weather-driven crop advisory for Indian farmers
+                {translate("agri.advancedSubtitle")}
               </p>
             </div>
           </div>
@@ -170,7 +170,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
             className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
           >
             <Sprout className="h-3 w-3" />
-            {showProfile ? "Hide Profile" : hasProfile ? "Edit Profile" : "Set Farm Profile"}
+            {showProfile ? translate("agri.hideProfile") : hasProfile ? translate("agri.editProfile") : translate("agri.setFarmProfile")}
           </button>
         </div>
       </div>
@@ -182,10 +182,10 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
             {/* Location */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <MapPin className="h-3 w-3" /> Location
+                <MapPin className="h-3 w-3" /> {translate("agri.location")}
               </h4>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">State *</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.state")}</label>
                 <select
                   value={profile.location.state}
                   onChange={(e) => setProfile(p => ({ ...p, location: { ...p.location, state: e.target.value } }))}
@@ -196,7 +196,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </select>
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">District</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.district")}</label>
                 <input
                   type="text"
                   value={profile.location.district}
@@ -210,10 +210,10 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
             {/* Crop */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Leaf className="h-3 w-3" /> Crop Information
+                <Leaf className="h-3 w-3" /> {translate("agri.cropInfo")}
               </h4>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">Crop *</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.cropName")}</label>
                 <select
                   value={profile.crop.name}
                   onChange={(e) => setProfile(p => ({ ...p, crop: { ...p.crop, name: e.target.value } }))}
@@ -224,7 +224,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </select>
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">Variety (optional)</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.variety")}</label>
                 <input
                   type="text"
                   value={profile.crop.variety || ""}
@@ -234,7 +234,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 />
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">Growth Stage *</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.growthStageLabel")}</label>
                 <select
                   value={profile.crop.growthStage}
                   onChange={(e) => setProfile(p => ({ ...p, crop: { ...p.crop, growthStage: e.target.value as GrowthStage } }))}
@@ -248,10 +248,10 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
             {/* Season & Farm */}
             <div className="space-y-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="h-3 w-3" /> Season & Farm
+                <Calendar className="h-3 w-3" /> {translate("agri.seasonFarm")}
               </h4>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">Season</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.seasonLabel")}</label>
                 <select
                   value={profile.crop.season}
                   onChange={(e) => setProfile(p => ({ ...p, crop: { ...p.crop, season: e.target.value as Season } }))}
@@ -261,7 +261,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </select>
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">Irrigation Type</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.irrigationTypeLabel")}</label>
                 <select
                   value={profile.crop.irrigationType}
                   onChange={(e) => setProfile(p => ({ ...p, crop: { ...p.crop, irrigationType: e.target.value as IrrigationType } }))}
@@ -271,7 +271,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </select>
               </div>
               <div>
-                <label className="text-[11px] text-muted-foreground mb-1 block">Soil Type</label>
+                <label className="text-[11px] text-muted-foreground mb-1 block">{translate("agri.soilTypeLabel")}</label>
                 <select
                   value={profile.crop.soilType}
                   onChange={(e) => setProfile(p => ({ ...p, crop: { ...p.crop, soilType: e.target.value as SoilType } }))}
@@ -288,7 +288,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
               disabled={!profile.crop.name}
               className="rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              {hasProfile ? "Generate Advisory" : "Select a Crop First"}
+              {hasProfile ? translate("agri.generateAdvisory") : translate("agri.selectCropFirst")}
             </button>
           </div>
         </div>
@@ -298,16 +298,15 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
       {!hasProfile && !advisory && (
         <div className="p-8 text-center">
           <Sprout className="h-8 w-8 text-muted-foreground/20 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground font-medium">Set your farm profile to get an advisory</p>
+          <p className="text-sm text-muted-foreground font-medium">{translate("agri.setProfilePrompt")}</p>
           <p className="mt-1.5 text-xs text-muted-foreground/60 max-w-xs mx-auto">
-            Click "Set Farm Profile" above and provide your crop and location details.
-            The system will generate a weather-driven agricultural advisory.
+            {translate("agri.setProfileInstructions")}
           </p>
           <button
             onClick={() => setShowProfile(true)}
             className="mt-4 rounded-lg bg-primary/10 px-4 py-2 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
           >
-            Set Farm Profile
+            {translate("agri.setFarmProfile")}
           </button>
         </div>
       )}
@@ -338,15 +337,15 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
           </div>
 
           {/* ─── Current Conditions ──────────────────────────────────── */}
-          <CollapsibleSection title="Current Conditions" icon={Cloud} defaultOpen={true}>
+          <CollapsibleSection title={translate("agri.currentConditions")} icon={Cloud} defaultOpen={true}>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
               {[
-                { label: "Temperature", value: `${Math.round(advisory.currentConditions.temperature)}°C`, icon: Thermometer },
-                { label: "Humidity", value: `${advisory.currentConditions.humidity}%`, icon: Droplets },
-                { label: "Wind", value: `${Math.round(advisory.currentConditions.windSpeed)} km/h`, icon: Wind },
-                { label: "Rain Prob.", value: `${advisory.currentConditions.rainProb}%`, icon: Cloud },
-                { label: "Rainfall", value: `${Math.round(advisory.currentConditions.rainfall)}mm`, icon: Droplet },
-                { label: "Condition", value: advisory.currentConditions.condition, icon: Sun },
+                { label: translate("agri.temperatureLabel"), value: `${Math.round(advisory.currentConditions.temperature)}°C`, icon: Thermometer },
+                { label: translate("agri.humidityLabel"), value: `${advisory.currentConditions.humidity}%`, icon: Droplets },
+                { label: translate("agri.windLabel"), value: `${Math.round(advisory.currentConditions.windSpeed)} km/h`, icon: Wind },
+                { label: translate("agri.rainProbLabel"), value: `${advisory.currentConditions.rainProb}%`, icon: Cloud },
+                { label: translate("agri.rainfallLabel"), value: `${Math.round(advisory.currentConditions.rainfall)}mm`, icon: Droplet },
+                { label: translate("agri.conditionLabel"), value: advisory.currentConditions.condition, icon: Sun },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2">
                   <Icon className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
@@ -361,7 +360,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
 
           {/* ─── Weather Alerts ──────────────────────────────────────── */}
           {advisory.weatherAlerts.length > 0 && (
-            <CollapsibleSection title="Weather Alerts" icon={AlertTriangle} defaultOpen={true}>
+            <CollapsibleSection title={translate("agri.weatherAlertsLabel")} icon={AlertTriangle} defaultOpen={true}>
               <div className="space-y-2 mt-3">
                 {advisory.weatherAlerts.map((alert, i) => (
                   <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 ${riskColor(alert.level)}`}>
@@ -378,7 +377,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
 
           {/* ─── Detailed Risks ──────────────────────────────────────── */}
           {advisory.risks.length > 0 && (
-            <CollapsibleSection title="Weather Risk Analysis" icon={Shield} defaultOpen={true}>
+            <CollapsibleSection title={translate("agri.riskAnalysis")} icon={Shield} defaultOpen={true}>
               <div className="space-y-3 mt-3">
                 {advisory.risks.map((risk) => (
                   <div key={risk.id} className="rounded-lg border border-border/40 bg-background/50 p-3 space-y-2">
@@ -391,11 +390,11 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                     </div>
                     <p className="text-xs text-muted-foreground">{risk.description}</p>
                     <div className="rounded-lg bg-muted/30 p-2">
-                      <p className="text-[10px] text-muted-foreground mb-1">Why this matters:</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">{translate("agri.whyItMatters")}</p>
                       <p className="text-xs">{risk.why}</p>
                     </div>
                     <div className="rounded-lg bg-primary/5 p-2">
-                      <p className="text-[10px] text-primary/70 mb-1">Recommendation:</p>
+                      <p className="text-[10px] text-primary/70 mb-1">{translate("agri.recommendationLabel")}</p>
                       <p className="text-xs">{risk.recommendation}</p>
                     </div>
                   </div>
@@ -405,7 +404,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
           )}
 
           {/* ─── Today's Actions ─────────────────────────────────────── */}
-          <CollapsibleSection title="Today's Recommended Actions" icon={CheckCircle} defaultOpen={true}>
+          <CollapsibleSection title={translate("agri.todayActions")} icon={CheckCircle} defaultOpen={true}>
             <ol className="mt-3 space-y-2">
               {advisory.todaysActions.map((action, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs">
@@ -419,21 +418,21 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
           </CollapsibleSection>
 
           {/* ─── Irrigation Advisory ─────────────────────────────────── */}
-          <CollapsibleSection title="Irrigation Advisory" icon={Droplets}>
+          <CollapsibleSection title={translate("agri.irrigationAdvisoryLabel")} icon={Droplets}>
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">{irrigationEmoji(advisory.irrigationNeed)}</span>
               </div>
               <p className="text-xs leading-relaxed">{advisory.irrigationAdvisory}</p>
               <div className="rounded-lg bg-muted/30 p-2">
-                <p className="text-[10px] text-muted-foreground mb-1">Reasoning:</p>
+                <p className="text-[10px] text-muted-foreground mb-1">{translate("agri.reasoning")}</p>
                 <p className="text-xs">{advisory.irrigationReason}</p>
               </div>
             </div>
           </CollapsibleSection>
 
           {/* ─── 3-7 Day Outlook ─────────────────────────────────────── */}
-          <CollapsibleSection title="3-7 Day Agricultural Outlook" icon={TrendingUp}>
+          <CollapsibleSection title={translate("agri.outlook37")} icon={TrendingUp}>
             <div className="mt-3 space-y-2">
               {advisory.dailyOutlook.map((day) => (
                 <div key={day.date} className="flex items-center gap-3 rounded-lg bg-muted/20 px-3 py-2.5 border border-border/30">
@@ -456,7 +455,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
           </CollapsibleSection>
 
           {/* ─── Pest & Disease Risk ─────────────────────────────────── */}
-          <CollapsibleSection title="Pest & Disease Weather Risk" icon={Bug}>
+          <CollapsibleSection title={translate("agri.pestDiseaseRisk")} icon={Bug}>
             <div className="mt-3 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-sm">{riskEmoji(advisory.pestDiseaseRisk.level)}</span>
@@ -464,7 +463,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
               </div>
               <p className="text-xs text-muted-foreground">{advisory.pestDiseaseRisk.why}</p>
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">What to monitor:</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1">{translate("agri.whatToMonitor")}</p>
                 <ul className="space-y-1">
                   {advisory.pestDiseaseRisk.whatToMonitor.map((item, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-xs">
@@ -475,14 +474,14 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </ul>
               </div>
               <div className="rounded-lg bg-primary/5 p-2">
-                <p className="text-[10px] text-primary/70 mb-1">Action:</p>
+                <p className="text-[10px] text-primary/70 mb-1">{translate("agri.actionLabel")}</p>
                 <p className="text-xs">{advisory.pestDiseaseRisk.action}</p>
               </div>
             </div>
           </CollapsibleSection>
 
           {/* ─── Farm Operation Window ───────────────────────────────── */}
-          <CollapsibleSection title="Farm Operation Window" icon={Scissors}>
+          <CollapsibleSection title={translate("agri.farmOperationWindow")} icon={Scissors}>
             <div className="mt-3 space-y-2">
               {Object.entries(advisory.farmOperationWindow).map(([key, op]) => (
                 <div key={key} className="flex items-center justify-between rounded-lg bg-muted/20 px-3 py-2 border border-border/30">
@@ -494,7 +493,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                     <span className="text-xs font-medium capitalize">{key}</span>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full ${op.suitable ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
-                    {op.suitable ? "Suitable" : "Not Suitable"}
+                    {op.suitable ? translate("agri.suitable") : translate("agri.notSuitable")}
                   </span>
                 </div>
               ))}
@@ -510,7 +509,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
           </CollapsibleSection>
 
           {/* ─── Advisory Confidence ─────────────────────────────────── */}
-          <CollapsibleSection title="Advisory Confidence" icon={Info}>
+          <CollapsibleSection title={translate("agri.advisoryConfidence")} icon={Info}>
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-2">
                 <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
@@ -526,10 +525,10 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
           </CollapsibleSection>
 
           {/* ─── Sources ─────────────────────────────────────────────── */}
-          <CollapsibleSection title="Sources & Transparency" icon={BookOpen}>
+          <CollapsibleSection title={translate("agri.sourcesTransparency")} icon={BookOpen}>
             <div className="mt-3 space-y-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Weather Data</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{translate("agri.weatherData")}</p>
                 <ul className="space-y-1">
                   {advisory.sources.weather.map((s, i) => (
                     <li key={i} className="text-xs text-muted-foreground">• {s}</li>
@@ -537,7 +536,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </ul>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Agricultural Knowledge</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{translate("agri.agriKnowledge")}</p>
                 <ul className="space-y-1">
                   {advisory.sources.agricultural.map((s, i) => (
                     <li key={i} className="text-xs text-muted-foreground">• {s}</li>
@@ -545,7 +544,7 @@ export function AdvancedAgriAdvisory({ weatherData }: AdvancedAgriAdvisoryProps)
                 </ul>
               </div>
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Disclaimer</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">{translate("agri.disclaimer")}</p>
                 <ul className="space-y-1">
                   {advisory.sources.official.map((s, i) => (
                     <li key={i} className="text-xs text-muted-foreground">• {s}</li>
