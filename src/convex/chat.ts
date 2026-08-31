@@ -443,18 +443,39 @@ function generateHelpResponse(): string {
 
 async function callLLM(userMessage: string, lang: string, apiKey?: string): Promise<string> {
   const key = apiKey || process.env.GEMINI_API_KEY || "";
-  if (!key) return "**GEMINI_API_KEY not configured.** For general knowledge, add a Gemini API key. I can still help with weather, forecasts, and agriculture!";
+  if (!key) {
+    console.error("[WeatherGPT] No Gemini API key provided");
+    return "[LLM_ERROR] GEMINI_API_KEY not configured";
+  }
+  console.log("[WeatherGPT] Using Gemini key, prefix:", key.substring(0, 6) + "..., length:", key.length);
   const langNames: Record<string, string> = { en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", te: "Telugu", mr: "Marathi", gu: "Gujarati", kn: "Kannada", ml: "Malayalam", pa: "Punjabi" };
   const langName = langNames[lang] || "English";
-  const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";
-  try {
+  const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";    try {
     const { GoogleGenAI } = await import("@google/genai");
     const ai = new GoogleGenAI({ apiKey: key });
-    const response = await ai.models.generateContent({ model: "gemini-2.5-flash", contents: userMessage, config: { systemInstruction: systemPrompt, temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 } });
-    return response.text || "I couldn't generate a response. Please try asking about weather.";
+    // Try gemini-2.0-flash first, fallback to gemini-1.5-flash
+    let modelNames = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    let lastError: unknown = null;
+    for (const modelName of modelNames) {
+      try {
+        const response = await ai.models.generateContent({ model: modelName, contents: userMessage, config: { systemInstruction: systemPrompt, temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 } });
+        const text = response.text;
+        if (text && text.trim().length > 0) return text;
+      } catch (modelErr) {
+        console.error("[WeatherGPT] Gemini model " + modelName + " failed:", modelErr instanceof Error ? modelErr.message : modelErr);
+        lastError = modelErr;
+        const errMsg = modelErr instanceof Error ? modelErr.message : String(modelErr);
+        if (errMsg.includes("401") || errMsg.includes("UNAUTHENTICATED") || errMsg.includes("invalid authentication")) {
+          console.error("[WeatherGPT] API key invalid (401). Get a new key at aistudio.google.com/apikey");
+          return "[LLM_ERROR] Invalid API key (401). Please get a new key at aistudio.google.com/apikey";
+        }
+      }
+    }
+    console.error("[WeatherGPT] All Gemini models failed. Last error:", lastError);
+    return "[LLM_ERROR] All Gemini models failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
   } catch (error) {
-    console.error("Gemini error:", error);
-    return "I'm having trouble with the AI service. Please ask me about weather \u2014 I can provide real-time weather data without the AI!";
+    console.error("Gemini init error:", error);
+    return "[LLM_ERROR] " + (error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -1161,10 +1182,12 @@ export const processMessage = action({
 
     // Fallback: try LLM for general questions, fall back to static if LLM fails
     const llmResponse = await callLLM(content, lang, args.apiKey);
-    if (llmResponse && !llmResponse.startsWith("[DEBUG]") && !llmResponse.startsWith("**Error:**") && llmResponse.length > 10) {
+    const isLlmSuccess = llmResponse && !llmResponse.startsWith("[DEBUG]") && !llmResponse.startsWith("**Error:**") && !llmResponse.startsWith("[LLM_ERROR]") && !llmResponse.startsWith("**GEMINI_API_KEY") && llmResponse.trim().length > 10;
+    if (isLlmSuccess) {
       await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: llmResponse });
       return { text: llmResponse, metadata: null };
     }
+    console.error("[WeatherGPT] LLM fallback used. Response:", llmResponse?.substring(0, 150));
     // Static fallback if LLM unavailable
     const fallbackText = "I am here to help with weather, forecasts, alerts, and agriculture advice. What would you like to know?\n\n**Try asking:**\n- \"Weather in Mumbai\"\n- \"7-day forecast for Delhi\"\n- \"Any cyclone alerts for Chennai?\"\n- \"Where are the critical weather conditions?\"\n- \"Should I irrigate crops today?\"";
     await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: fallbackText });
