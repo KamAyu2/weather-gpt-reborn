@@ -456,9 +456,11 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
   const modelNames = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError: unknown = null;
 
+  console.log("[WeatherGPT] Key length:", key.length, "starts with:", key.substring(0, 8));
+
   for (const modelName of modelNames) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
       const body = {
         contents: [{ parts: [{ text: userMessage }] }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -472,15 +474,20 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
       console.log("[WeatherGPT] Calling Gemini REST API, model:", modelName);
       const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key,
+        },
         body: JSON.stringify(body),
       });
 
+      console.log("[WeatherGPT] Response status:", response.status);
+
       if (!response.ok) {
         const errorData = await response.text();
-        console.error("[WeatherGPT] Gemini REST API error:", response.status, errorData.substring(0, 200));
+        console.error("[WeatherGPT] Gemini REST API error:", response.status, errorData.substring(0, 300));
         if (response.status === 401) {
-          return "[LLM_ERROR] Invalid API key (401). Please check your GEMINI_API_KEY.";
+          return "[LLM_ERROR] Invalid API key (401). Key starts with: " + key.substring(0, 6) + "... Please get a new key at aistudio.google.com/apikey";
         }
         if (response.status === 403) {
           return "[LLM_ERROR] API access forbidden (403). Enable the Generative Language API at console.cloud.google.com/apis/library/generativelanguage.googleapis.com";
@@ -490,12 +497,13 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
       }
 
       const data = await response.json();
+      console.log("[WeatherGPT] Response has candidates:", !!data?.candidates);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (text && text.trim().length > 0) {
         console.log("[WeatherGPT] Gemini success with model:", modelName);
         return text;
       }
-      console.error("[WeatherGPT] Empty response from model:", modelName);
+      console.error("[WeatherGPT] Empty response from model:", modelName, "data:", JSON.stringify(data).substring(0, 200));
     } catch (modelErr) {
       console.error("[WeatherGPT] Gemini model " + modelName + " failed:", modelErr instanceof Error ? modelErr.message : modelErr);
       lastError = modelErr;
@@ -541,6 +549,46 @@ export const getMessages = query({
 export const getGeminiKey = query({
   args: {},
   handler: async (ctx) => { return process.env.GEMINI_API_KEY || ""; },
+});
+
+export const testGeminiKey = action({
+  args: { apiKey: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const key = args.apiKey || process.env.GEMINI_API_KEY || "";
+    if (!key) return { success: false, error: "No API key configured" };
+    
+    console.log("[WeatherGPT TEST] Testing key:", key.substring(0, 8) + "..., length:", key.length);
+    
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+      const body = {
+        contents: [{ parts: [{ text: "Say hello in one word" }] }],
+        generationConfig: { maxOutputTokens: 10 },
+      };
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key,
+        },
+        body: JSON.stringify(body),
+      });
+      
+      console.log("[WeatherGPT TEST] Response status:", response.status);
+      const data = await response.json();
+      console.log("[WeatherGPT TEST] Response:", JSON.stringify(data).substring(0, 500));
+      
+      if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        return { success: true, response: data.candidates[0].content.parts[0].text };
+      } else {
+        return { success: false, error: `HTTP ${response.status}: ${JSON.stringify(data).substring(0, 200)}` };
+      }
+    } catch (err) {
+      console.error("[WeatherGPT TEST] Error:", err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  },
 });
 
 export const getStarredMessages = query({
