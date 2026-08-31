@@ -450,33 +450,60 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
   console.log("[WeatherGPT] Using Gemini key, prefix:", key.substring(0, 6) + "..., length:", key.length);
   const langNames: Record<string, string> = { en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", te: "Telugu", mr: "Marathi", gu: "Gujarati", kn: "Kannada", ml: "Malayalam", pa: "Punjabi" };
   const langName = langNames[lang] || "English";
-  const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";    try {
-    const { GoogleGenAI } = await import("@google/genai");
-    const ai = new GoogleGenAI({ apiKey: key });
-    // Try gemini-2.0-flash first, fallback to gemini-1.5-flash
-    let modelNames = ["gemini-2.0-flash", "gemini-1.5-flash"];
-    let lastError: unknown = null;
-    for (const modelName of modelNames) {
-      try {
-        const response = await ai.models.generateContent({ model: modelName, contents: userMessage, config: { systemInstruction: systemPrompt, temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 } });
-        const text = response.text;
-        if (text && text.trim().length > 0) return text;
-      } catch (modelErr) {
-        console.error("[WeatherGPT] Gemini model " + modelName + " failed:", modelErr instanceof Error ? modelErr.message : modelErr);
-        lastError = modelErr;
-        const errMsg = modelErr instanceof Error ? modelErr.message : String(modelErr);
-        if (errMsg.includes("401") || errMsg.includes("UNAUTHENTICATED") || errMsg.includes("invalid authentication")) {
-          console.error("[WeatherGPT] API key invalid (401). Get a new key at aistudio.google.com/apikey");
-          return "[LLM_ERROR] Invalid API key (401). Please get a new key at aistudio.google.com/apikey";
+  const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";
+
+  // Use REST API directly for maximum compatibility with all key formats
+  const modelNames = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+  let lastError: unknown = null;
+
+  for (const modelName of modelNames) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+      const body = {
+        contents: [{ parts: [{ text: userMessage }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          temperature: 0.8,
+          topP: 0.95,
+          maxOutputTokens: 4096,
+        },
+      };
+
+      console.log("[WeatherGPT] Calling Gemini REST API, model:", modelName);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("[WeatherGPT] Gemini REST API error:", response.status, errorData.substring(0, 200));
+        if (response.status === 401) {
+          return "[LLM_ERROR] Invalid API key (401). Please check your GEMINI_API_KEY.";
         }
+        if (response.status === 403) {
+          return "[LLM_ERROR] API access forbidden (403). Enable the Generative Language API at console.cloud.google.com/apis/library/generativelanguage.googleapis.com";
+        }
+        lastError = new Error(`HTTP ${response.status}: ${errorData.substring(0, 100)}`);
+        continue;
       }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text && text.trim().length > 0) {
+        console.log("[WeatherGPT] Gemini success with model:", modelName);
+        return text;
+      }
+      console.error("[WeatherGPT] Empty response from model:", modelName);
+    } catch (modelErr) {
+      console.error("[WeatherGPT] Gemini model " + modelName + " failed:", modelErr instanceof Error ? modelErr.message : modelErr);
+      lastError = modelErr;
     }
-    console.error("[WeatherGPT] All Gemini models failed. Last error:", lastError);
-    return "[LLM_ERROR] All Gemini models failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
-  } catch (error) {
-    console.error("Gemini init error:", error);
-    return "[LLM_ERROR] " + (error instanceof Error ? error.message : String(error));
   }
+
+  console.error("[WeatherGPT] All Gemini models failed. Last error:", lastError);
+  return "[LLM_ERROR] All Gemini models failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
 }
 
 // ─── Chat mutations and queries ─────────────────────────────────────────────
