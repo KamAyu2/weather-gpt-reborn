@@ -440,8 +440,6 @@ function generateHelpResponse(): string {
 }
 
 // ─── LLM Integration ────────────────────────────────────────────────────────
-import { GoogleGenAI } from "@google/genai";
-
 async function callLLM(userMessage: string, lang: string, apiKey?: string): Promise<string> {
   const key = apiKey || process.env.GEMINI_API_KEY || "";
   if (!key) {
@@ -452,40 +450,123 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
   const langName = langNames[lang] || "English";
   const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";
 
+  // Try both generateContent and interactions endpoints
   const modelNames = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
   let lastError: unknown = null;
 
-  console.log("[WeatherGPT] Using @google/genai SDK, key prefix:", key.substring(0, 8) + "..., length:", key.length);
+  console.log("[WeatherGPT] key prefix:", key.substring(0, 8) + "..., length:", key.length);
 
+  // Approach 1: Try the newer interactions endpoint (works with AQ keys)
   for (const modelName of modelNames) {
     try {
-      const ai = new GoogleGenAI({ apiKey: key });
-      const response = await ai.models.generateContent({
+      const url = `https://generativelanguage.googleapis.com/v1beta/interactions`;
+      const body = {
         model: modelName,
-        contents: userMessage,
-        config: {
-          systemInstruction: systemPrompt,
-          temperature: 0.8,
-          topP: 0.95,
-          maxOutputTokens: 4096,
+        input: userMessage,
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        config: { temperature: 0.8, maxOutputTokens: 4096 },
+      };
+      console.log(`[WeatherGPT] Trying interactions endpoint with ${modelName}`);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key,
         },
+        body: JSON.stringify(body),
       });
-
-      const text = response.text;
-      if (text && text.trim().length > 0) {
-        console.log(`[WeatherGPT] SDK SUCCESS with ${modelName}`);
-        return text;
+      console.log(`[WeatherGPT] interactions ${modelName} status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.outputText || data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          console.log(`[WeatherGPT] interactions SUCCESS with ${modelName}`);
+          return text;
+        }
+      } else {
+        const errText = await response.text();
+        console.error(`[WeatherGPT] interactions ${modelName} error ${response.status}:`, errText.substring(0, 200));
+        lastError = new Error(`interactions ${response.status}`);
       }
-      console.error(`[WeatherGPT] SDK empty response from ${modelName}`);
-    } catch (modelErr) {
-      const errMsg = modelErr instanceof Error ? modelErr.message : String(modelErr);
-      console.error(`[WeatherGPT] SDK ${modelName} failed:`, errMsg.substring(0, 300));
-      lastError = modelErr;
+    } catch (e) {
+      console.error(`[WeatherGPT] interactions ${modelName} exception:`, e instanceof Error ? e.message : e);
+      lastError = e;
     }
   }
 
-  console.error("[WeatherGPT] All SDK models failed. Last error:", lastError);
-  return "[LLM_ERROR] All Gemini models failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
+  // Approach 2: Try generateContent with x-goog-api-key header
+  for (const modelName of modelNames) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+      const body = {
+        contents: [{ parts: [{ text: userMessage }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 },
+      };
+      console.log(`[WeatherGPT] Trying generateContent with ${modelName}`);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": key,
+        },
+        body: JSON.stringify(body),
+      });
+      console.log(`[WeatherGPT] generateContent ${modelName} status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          console.log(`[WeatherGPT] generateContent SUCCESS with ${modelName}`);
+          return text;
+        }
+      } else {
+        const errText = await response.text();
+        console.error(`[WeatherGPT] generateContent ${modelName} error ${response.status}:`, errText.substring(0, 200));
+        lastError = new Error(`generateContent ${response.status}`);
+      }
+    } catch (e) {
+      console.error(`[WeatherGPT] generateContent ${modelName} exception:`, e instanceof Error ? e.message : e);
+      lastError = e;
+    }
+  }
+
+  // Approach 3: Try generateContent with ?key= URL param
+  for (const modelName of modelNames) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`;
+      const body = {
+        contents: [{ parts: [{ text: userMessage }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 },
+      };
+      console.log(`[WeatherGPT] Trying ?key= with ${modelName}`);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      console.log(`[WeatherGPT] ?key= ${modelName} status: ${response.status}`);
+      if (response.ok) {
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          console.log(`[WeatherGPT] ?key= SUCCESS with ${modelName}`);
+          return text;
+        }
+      } else {
+        const errText = await response.text();
+        console.error(`[WeatherGPT] ?key= ${modelName} error ${response.status}:`, errText.substring(0, 200));
+        lastError = new Error(`?key= ${response.status}`);
+      }
+    } catch (e) {
+      console.error(`[WeatherGPT] ?key= ${modelName} exception:`, e instanceof Error ? e.message : e);
+      lastError = e;
+    }
+  }
+
+  console.error("[WeatherGPT] ALL approaches failed. Last error:", lastError);
+  return "[LLM_ERROR] All Gemini approaches failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
 }
 
 // ─── Chat mutations and queries ─────────────────────────────────────────────
