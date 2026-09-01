@@ -566,7 +566,7 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
   }
 
   console.error("[WeatherGPT] ALL approaches failed. Last error:", lastError);
-  return "[LLM_ERROR] All Gemini approaches failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
+  return "[DEBUG_KEY] key_prefix=" + key.substring(0, 8) + " key_len=" + key.length + " error=" + (lastError instanceof Error ? lastError.message : String(lastError));
 }
 
 // ─── Chat mutations and queries ─────────────────────────────────────────────
@@ -1317,11 +1317,11 @@ export const processMessage = action({
       await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: llmResponse });
       return { text: llmResponse, metadata: null };
     }
-    console.error("[WeatherGPT] LLM fallback used. Response:", llmResponse?.substring(0, 150));
-    // Static fallback if LLM unavailable
-    const fallbackText = "I am here to help with weather, forecasts, alerts, and agriculture advice. What would you like to know?\n\n**Try asking:**\n- \"Weather in Mumbai\"\n- \"7-day forecast for Delhi\"\n- \"Any cyclone alerts for Chennai?\"\n- \"Where are the critical weather conditions?\"\n- \"Should I irrigate crops today?\"";
-    await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: fallbackText });
-    return { text: fallbackText, metadata: null };
+    console.error("[WeatherGPT] LLM fallback used. Response:", llmResponse?.substring(0, 300));
+    // Show debug info to diagnose the issue
+    const debugText = llmResponse || "[LLM_ERROR] No response from callLLM";
+    await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: debugText });
+    return { text: debugText, metadata: null };
   },
 });
 
