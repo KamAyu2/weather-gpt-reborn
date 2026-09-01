@@ -451,7 +451,7 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
   const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";
 
   // Try both generateContent and interactions endpoints
-  const modelNames = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash"];
+  const modelNames = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3.5-flash"];
   let lastError: unknown = null;
 
   console.log("[WeatherGPT] key prefix:", key.substring(0, 8) + "..., length:", key.length);
@@ -615,7 +615,7 @@ export const testGeminiKey = action({
     console.log("[WeatherGPT TEST] Testing key:", key.substring(0, 8) + "..., length:", key.length);
     
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
       const body = {
         contents: [{ parts: [{ text: "Say hello in one word" }] }],
         generationConfig: { maxOutputTokens: 10 },
@@ -1318,10 +1318,10 @@ export const processMessage = action({
       return { text: llmResponse, metadata: null };
     }
     console.error("[WeatherGPT] LLM fallback used. Response:", llmResponse?.substring(0, 300));
-    // Show debug info to diagnose the issue
-    const debugText = llmResponse || "[LLM_ERROR] No response from callLLM";
-    await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: debugText });
-    return { text: debugText, metadata: null };
+    // Static fallback if LLM unavailable
+    const fallbackText = "I am here to help with weather, forecasts, alerts, and agriculture advice. What would you like to know?\n\n**Try asking:**\n- \"Weather in Mumbai\"\n- \"7-day forecast for Delhi\"\n- \"Any cyclone alerts for Chennai?\"\n- \"Where are the critical weather conditions?\"\n- \"Should I irrigate crops today?\"";
+    await ctx.runMutation(api.chat.saveAssistantMessage, { conversationId: args.conversationId, content: fallbackText });
+    return { text: fallbackText, metadata: null };
   },
 });
 
