@@ -450,67 +450,91 @@ async function callLLM(userMessage: string, lang: string, apiKey?: string): Prom
   console.log("[WeatherGPT] Using Gemini key, prefix:", key.substring(0, 6) + "..., length:", key.length);
   const langNames: Record<string, string> = { en: "English", hi: "Hindi", ta: "Tamil", bn: "Bengali", te: "Telugu", mr: "Marathi", gu: "Gujarati", kn: "Kannada", ml: "Malayalam", pa: "Punjabi" };
   const langName = langNames[lang] || "English";
-  const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";
-
-  // Use REST API directly for maximum compatibility with all key formats
+  const systemPrompt = "You are WeatherGPT, an intelligent weather assistant built for Smart India Hackathon 2026 by Team Craxzy. Respond in " + langName + ". Be helpful, concise, and use markdown. Never fabricate weather data or official warnings. Support Indian context.";    // Try multiple authentication methods for maximum key format compatibility
   const modelNames = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
   let lastError: unknown = null;
 
-  console.log("[WeatherGPT] Key length:", key.length, "starts with:", key.substring(0, 8));
+  const isAQKey = key.startsWith("AQ.");
+  console.log("[WeatherGPT] Key length:", key.length, "starts with:", key.substring(0, 8), "isAQ:", isAQKey);
 
   for (const modelName of modelNames) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
-      const body = {
-        contents: [{ parts: [{ text: userMessage }] }],
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: {
-          temperature: 0.8,
-          topP: 0.95,
-          maxOutputTokens: 4096,
-        },
-      };
-
-      console.log("[WeatherGPT] Calling Gemini REST API, model:", modelName);
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": key,
-        },
-        body: JSON.stringify(body),
+    // Try both auth methods: header (for AQ. keys) and URL param (for AIzaSy keys)
+    const authMethods: Array<{label: string; url: string; headers: Record<string, string>}> = [];
+    if (isAQKey) {
+      // AQ. keys: try header first, then URL param
+      authMethods.push({
+        label: "header",
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       });
+      authMethods.push({
+        label: "url_param",
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`,
+        headers: { "Content-Type": "application/json" },
+      });
+    } else {
+      // AIzaSy keys: try URL param first, then header
+      authMethods.push({
+        label: "url_param",
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${key}`,
+        headers: { "Content-Type": "application/json" },
+      });
+      authMethods.push({
+        label: "header",
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`,
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      });
+    }
 
-      console.log("[WeatherGPT] Response status:", response.status);
+    for (const auth of authMethods) {
+      try {
+        const body = {
+          contents: [{ parts: [{ text: userMessage }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: { temperature: 0.8, topP: 0.95, maxOutputTokens: 4096 },
+        };
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("[WeatherGPT] Gemini REST API error:", response.status, errorData.substring(0, 300));
-        if (response.status === 401) {
-          return "[LLM_ERROR] Invalid API key (401). Key starts with: " + key.substring(0, 6) + "... Please get a new key at aistudio.google.com/apikey";
+        console.log(`[WeatherGPT] Calling Gemini model=${modelName} auth=${auth.label}`);
+        const response = await fetch(auth.url, {
+          method: "POST",
+          headers: auth.headers,
+          body: JSON.stringify(body),
+        });
+
+        console.log(`[WeatherGPT] Response status: ${response.status} model=${modelName} auth=${auth.label}`);
+
+        if (!response.ok) {
+          const errorData = await response.text();
+          console.error(`[WeatherGPT] Error ${response.status} (model=${modelName} auth=${auth.label}):`, errorData.substring(0, 300));
+          if (response.status === 401) {
+            // Don't return immediately — try next auth method
+            console.log(`[WeatherGPT] 401 with ${auth.label} auth, trying next method...`);
+            lastError = new Error(`HTTP 401 with ${auth.label} auth`);
+            continue;
+          }
+          if (response.status === 403) {
+            return "[LLM_ERROR] API access forbidden (403). Enable the Generative Language API at console.cloud.google.com/apis/library/generativelanguage.googleapis.com";
+          }
+          lastError = new Error(`HTTP ${response.status}: ${errorData.substring(0, 100)}`);
+          continue;
         }
-        if (response.status === 403) {
-          return "[LLM_ERROR] API access forbidden (403). Enable the Generative Language API at console.cloud.google.com/apis/library/generativelanguage.googleapis.com";
-        }
-        lastError = new Error(`HTTP ${response.status}: ${errorData.substring(0, 100)}`);
-        continue;
-      }
 
-      const data = await response.json();
-      console.log("[WeatherGPT] Response has candidates:", !!data?.candidates);
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (text && text.trim().length > 0) {
-        console.log("[WeatherGPT] Gemini success with model:", modelName);
-        return text;
+        const data = await response.json();
+        console.log(`[WeatherGPT] Response has candidates: ${!!data?.candidates} model=${modelName} auth=${auth.label}`);
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text && text.trim().length > 0) {
+          console.log(`[WeatherGPT] Gemini SUCCESS with model=${modelName} auth=${auth.label}`);
+          return text;
+        }
+        console.error(`[WeatherGPT] Empty response model=${modelName} auth=${auth.label}`);
+      } catch (modelErr) {
+        console.error(`[WeatherGPT] Error model=${modelName} auth=${auth.label}:`, modelErr instanceof Error ? modelErr.message : modelErr);
+        lastError = modelErr;
       }
-      console.error("[WeatherGPT] Empty response from model:", modelName, "data:", JSON.stringify(data).substring(0, 200));
-    } catch (modelErr) {
-      console.error("[WeatherGPT] Gemini model " + modelName + " failed:", modelErr instanceof Error ? modelErr.message : modelErr);
-      lastError = modelErr;
     }
   }
 
-  console.error("[WeatherGPT] All Gemini models failed. Last error:", lastError);
+  console.error("[WeatherGPT] All Gemini models+auth methods failed. Last error:", lastError);
   return "[LLM_ERROR] All Gemini models failed: " + (lastError instanceof Error ? lastError.message : String(lastError));
 }
 
