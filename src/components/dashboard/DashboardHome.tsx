@@ -133,6 +133,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               {detectedLocation && (
                 <button
                   onClick={() => loadWeatherByCoords(detectedLocation.lat, detectedLocation.lon, detectedLocation.name)}
+                  title={detectionMethod === "ip" ? "Detected via IP (approximate). Click to use, or search for your actual city below." : "Your detected location"}
                   className={`rounded-full px-2.5 py-1 text-[10px] transition-colors flex items-center gap-1 ${
                     weatherLocation === detectedLocation.name && weatherData
                       ? "bg-foreground text-background"
@@ -140,7 +141,7 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
                   }`}
                 >
                   <Navigation className="h-2.5 w-2.5" />
-                  {detectedLocation.name === "My Location" ? translate("dashboard.myLocation") : detectedLocation.name}
+                  {detectedLocation.name === "My Location" ? translate("dashboard.myLocation") : detectedLocation.name}{detectionMethod === "ip" && " ~"}
                 </button>
               )}
               {DEFAULT_LOCATIONS.map((city) => (
