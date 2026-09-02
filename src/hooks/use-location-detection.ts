@@ -66,29 +66,58 @@ export function useLocationDetection(): UseLocationDetectionResult {
     });
   }, []);
 
-  // Try IP geolocation using ip-api.com (free, no key required)
+  // Try IP geolocation using multiple free services (fallback chain)
   const tryIPGeolocation = useCallback(async (): Promise<boolean> => {
-    try {
-      const response = await fetch(
-        "https://ip-api.com/json/?fields=status,country,countryCode,regionName,city,lat,lon,timezone",
-        { signal: AbortSignal.timeout(5000) }
-      );
-      if (!response.ok) return false;
+    const services = [
+      // ipapi.co — free, 1000 req/day, no key needed
+      {
+        url: "https://ipapi.co/json/",
+        parse: (d: Record<string, unknown>) => ({
+          lat: d.latitude as number,
+          lon: d.longitude as number,
+          name: (d.city as string) || (d.region as string) || (d.country_name as string),
+        }),
+      },
+      // ipwho.is — free, no key needed
+      {
+        url: "https://ipwho.is/",
+        parse: (d: Record<string, unknown>) => ({
+          lat: d.latitude as number,
+          lon: d.longitude as number,
+          name: (d.city as string) || (d.region as string) || (d.country as string),
+        }),
+      },
+    ];
 
-      const data = await response.json();
-      if (data.status !== "success" || !data.lat || !data.lon) return false;
+    for (const service of services) {
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(service.url, {
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        });
+        clearTimeout(timeout);
+        if (!response.ok) continue;
 
-      setLocation({
-        lat: data.lat,
-        lon: data.lon,
-        name: data.city || data.regionName || data.country || "Your Area",
-      });
-      setMethod("ip");
-      setIsDetecting(false);
-      return true;
-    } catch {
-      return false;
+        const data = await response.json();
+        const parsed = service.parse(data);
+        if (parsed.lat && parsed.lon && parsed.name) {
+          setLocation({
+            lat: parsed.lat,
+            lon: parsed.lon,
+            name: parsed.name,
+          });
+          setMethod("ip");
+          setIsDetecting(false);
+          return true;
+        }
+      } catch {
+        // Try next service
+        continue;
+      }
     }
+    return false;
   }, []);
 
   // Manual location from search
