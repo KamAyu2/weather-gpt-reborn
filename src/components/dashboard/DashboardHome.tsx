@@ -1,7 +1,7 @@
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useCallback } from "react";
-import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw, Sprout, AlertTriangle, Globe, Navigation } from "lucide-react";
+import { Cloud, MapPin, Star, Thermometer, ArrowRight, RefreshCw, Sprout, AlertTriangle, Globe, Navigation, Search } from "lucide-react";
 import { motion } from "framer-motion";
 import { SuggestionChips } from "@/components/chat/SuggestionChips";
 import { WeatherCardCompact } from "@/components/weather/WeatherCard";
@@ -9,6 +9,8 @@ import { ThermalMap } from "@/components/weather/ThermalMap";
 import { SevereWeatherMap } from "@/components/weather/SevereWeatherMap";
 import { AdvancedAgriAdvisory } from "@/components/weather/AdvancedAgriAdvisory";
 import { useLanguage } from "@/lib/i18n";
+import { useLocationDetection } from "@/hooks/use-location-detection";
+import { CitySearchBar } from "@/components/ui/CitySearchBar";
 import type { WeatherData } from "@/convex/weather";
 
 interface DashboardHomeProps {
@@ -28,49 +30,33 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherLocation, setWeatherLocation] = useState("Mumbai");
-  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [hasAttemptedLocation, setHasAttemptedLocation] = useState(false);
 
-  // Auto-request geolocation once on mount
-  useEffect(() => {
-    if (!navigator.geolocation || hasAttemptedLocation) return;
-    setHasAttemptedLocation(true);
-
-    // Check permission first
-    const checkAndRequest = async () => {
-      try {
-        if (navigator.permissions) {
-          const result = await navigator.permissions.query({ name: "geolocation" });
-          if (result.state === "denied") return; // Already denied, don't prompt
-        }
-      } catch { /* proceed */ }
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
-        },
-        () => { /* Silently fail — user can use city buttons */ },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-      );
-    };
-    checkAndRequest();
-  }, [hasAttemptedLocation]);
+  // Location detection with fallback chain: Geolocation → IP → Manual Search
+  const {
+    location: detectedLocation,
+    method: detectionMethod,
+    isDetecting,
+    error: locationError,
+    setManualLocation,
+  } = useLocationDetection();
 
   // Load weather by coordinates (for user's location)
-  const loadWeatherByCoords = useCallback(async (lat: number, lon: number) => {
+  const loadWeatherByCoords = useCallback(async (lat: number, lon: number, name?: string) => {
     setWeatherLoading(true);
-    setWeatherLocation("My Location");
+    setWeatherLocation(name || "My Location");
     try {
-      let placeName = "Your Location";
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`, {
-          headers: { "User-Agent": "WeatherGPT/1.0" },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          placeName = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "Your Location";
-        }
-      } catch { /* use default */ }
+      let placeName = name || "Your Location";
+      if (!name || name === "My Location" || name === "Your Location") {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`, {
+            headers: { "User-Agent": "WeatherGPT/1.0" },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            placeName = data.address?.city || data.address?.town || data.address?.village || data.address?.state || name || "Your Location";
+          }
+        } catch { /* use default */ }
+      }
 
       const data = await fetchWeather({
         latitude: lat, longitude: lon,
@@ -84,12 +70,18 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
     }
   }, [fetchWeather]);
 
-  // Auto-load weather when location is obtained
+  // Auto-load weather when location is detected
   useEffect(() => {
-    if (userLocation && !weatherData) {
-      loadWeatherByCoords(userLocation.lat, userLocation.lon);
+    if (detectedLocation && !weatherData) {
+      loadWeatherByCoords(detectedLocation.lat, detectedLocation.lon, detectedLocation.name);
     }
-  }, [userLocation, weatherData, loadWeatherByCoords]);
+  }, [detectedLocation, weatherData, loadWeatherByCoords]);
+
+  // Handle manual city search selection
+  const handleCitySearch = useCallback((name: string, lat: number, lon: number) => {
+    setManualLocation(name, lat, lon);
+    loadWeatherByCoords(lat, lon, name);
+  }, [setManualLocation, loadWeatherByCoords]);
 
   const loadWeather = async (city: string) => {
     setWeatherLoading(true);
@@ -138,17 +130,17 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               {translate("dashboard.liveWeather")}
             </h2>
             <div className="flex items-center gap-1">
-              {userLocation && (
+              {detectedLocation && (
                 <button
-                  onClick={() => loadWeatherByCoords(userLocation.lat, userLocation.lon)}
+                  onClick={() => loadWeatherByCoords(detectedLocation.lat, detectedLocation.lon, detectedLocation.name)}
                   className={`rounded-full px-2.5 py-1 text-[10px] transition-colors flex items-center gap-1 ${
-                    weatherLocation === "My Location" && weatherData
+                    weatherLocation === detectedLocation.name && weatherData
                       ? "bg-foreground text-background"
                       : "text-muted-foreground hover:bg-muted/50"
                   }`}
                 >
                   <Navigation className="h-2.5 w-2.5" />
-                  {translate("dashboard.myLocation")}
+                  {detectedLocation.name === "My Location" ? translate("dashboard.myLocation") : detectedLocation.name}
                 </button>
               )}
               {DEFAULT_LOCATIONS.map((city) => (
@@ -211,18 +203,46 @@ export function DashboardHome({ onSelectConversation, onAskQuestion }: Dashboard
               </div>
             </div>
           ) : (
-            <button
-              onClick={() => loadWeather("Mumbai")}
-              className="w-full rounded-2xl border border-dashed border-border/50 bg-muted/10 p-8 text-center transition-colors hover:bg-muted/20"
-            >
-              <Cloud className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                {weatherLoading ? translate("dashboard.loadingWeather") : translate("dashboard.clickToLoad")}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/50">
-                {translate("dashboard.realTimeData")}
-              </p>
-            </button>
+            <div className="w-full rounded-2xl border border-dashed border-border/50 bg-muted/10 p-6 text-center">
+              {weatherLoading || isDetecting ? (
+                <>
+                  <RefreshCw className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2 animate-spin" />
+                  <p className="text-sm text-muted-foreground">
+                    {translate("dashboard.loadingWeather")}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-6 w-6 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground mb-1">
+                    {locationError || translate("dashboard.clickToLoad")}
+                  </p>
+                  <p className="text-xs text-muted-foreground/50 mb-4">
+                    Search for your city or use a quick link below
+                  </p>
+                  {/* City Search Bar */}
+                  <div className="max-w-sm mx-auto mb-4">
+                    <CitySearchBar
+                      onSelect={handleCitySearch}
+                      placeholder="Search for your city..."
+                      compact
+                    />
+                  </div>
+                  {/* Quick city buttons */}
+                  <div className="flex flex-wrap justify-center gap-1.5">
+                    {DEFAULT_LOCATIONS.map((city) => (
+                      <button
+                        key={city}
+                        onClick={() => loadWeather(city)}
+                        className="rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        {city}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </motion.div>
 
